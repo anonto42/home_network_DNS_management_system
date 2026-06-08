@@ -90,8 +90,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	// --- UDP DNS ---
-	udpAddr := net.UDPAddr{Port: *dnsPort}
-	udpConn, err := net.ListenUDP("udp", &udpAddr)
+	udpConn, err := listenUDPWithRetry(*dnsPort)
 	if err != nil {
 		slog.Error("listen UDP", "port", *dnsPort, "error", err)
 		os.Exit(1)
@@ -244,4 +243,17 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func listenUDPWithRetry(port int) (*net.UDPConn, error) {
+	for i := 0; i < 10; i++ {
+		udpAddr := net.UDPAddr{Port: port}
+		conn, err := net.ListenUDP("udp", &udpAddr)
+		if err == nil {
+			return conn, nil
+		}
+		slog.Warn("failed to listen UDP, retrying...", "port", port, "attempt", i+1)
+		time.Sleep(2 * time.Second)
+	}
+	return nil, fmt.Errorf("could not listen on UDP port %d after retries", port)
 }
