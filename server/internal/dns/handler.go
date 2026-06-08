@@ -3,7 +3,7 @@ package dns
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
@@ -79,7 +79,7 @@ func (h *Handler) handle(data []byte, clientIP string) ([]byte, models.Action) {
 		return nil, ""
 	}
 
-	log.Printf("Query: %s (type %d) from %s", domain, qtype, clientIP)
+	slog.Debug("dns query", "domain", domain, "qtype", qtype, "client", clientIP)
 
 	if h.db.IsBlocked(domain) {
 		h.db.LogQuery(domain, clientIP, models.ActionBlocked)

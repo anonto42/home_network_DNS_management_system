@@ -1,6 +1,6 @@
-.PHONY: help build run test clean web web-dev fmt vet \
+.PHONY: help build run test clean web web-dev fmt vet lint \
         docker-build docker-run docker-compose-up docker-compose-down \
-        firmware-build firmware-flash all
+        firmware-build firmware-flash all bench test-cover profile-cpu profile-mem
 
 # ─── Help ───────────────────────────────────────────────────────────────
 help: ## Show this help
@@ -17,14 +17,42 @@ run: ## Run Go server (sudo for port 53)
 run-dev: ## Run Go server with dev flags (no root needed on high ports)
 	cd server && go run ./cmd/dns-server --dns-port 5353 --http-port 8080
 
-test: ## Run Go tests
-	cd server && go test ./... -v
-
 fmt: ## Format Go code
 	cd server && go fmt ./...
 
 vet: ## Run Go vet
 	cd server && go vet ./...
+
+lint: ## Run golangci-lint (requires golangci-lint installed)
+	cd server && golangci-lint run ./... --timeout=5m
+
+lint-ci: ## Run lint with CI-friendly output
+	cd server && golangci-lint run ./... --out-format=github-actions --timeout=5m
+
+test: ## Run Go tests
+	cd server && go test ./... -v
+
+test-cover: ## Run tests with coverage report
+	cd server && go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
+	cd server && go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report: server/coverage.html"
+
+test-short: ## Run tests without -race for speed
+	cd server && go test ./... -short
+
+bench: ## Run Go benchmarks
+	cd server && go test ./... -bench=. -benchmem -run=^$$ | tee bench.txt
+
+profile-cpu: ## CPU profile (30s)
+	cd server && go test ./... -cpuprofile=cpu.prof -bench=. -benchtime=30s -run=^$$
+	cd server && go tool pprof -top cpu.prof | head -30
+
+profile-mem: ## Memory profile
+	cd server && go test ./... -memprofile=mem.prof -bench=. -benchmem -run=^$$
+	cd server && go tool pprof -top mem.prof | head -30
+
+tidy: ## Tidy Go module
+	cd server && go mod tidy
 
 clean: ## Remove build artifacts
 	rm -rf bin/ data/
@@ -72,6 +100,17 @@ firmware-build: ## Build Rust firmware
 
 firmware-flash: ## Flash firmware to ESP32
 	cd firmware && espflash flash
+
+# ─── Quality ─────────────────────────────────────────────────────────────
+pre-commit-install: ## Install pre-commit hooks
+	@command -v pre-commit >/dev/null 2>&1 || (echo "Install pre-commit: pip install pre-commit" && exit 1)
+	pre-commit install
+
+pre-commit-run: ## Run pre-commit on all files
+	pre-commit run --all-files
+
+pre-commit-update: ## Update pre-commit hook versions
+	pre-commit autoupdate
 
 # ─── All-in-one ─────────────────────────────────────────────────────────
 all: build web ## Build Go binary + React frontend

@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -114,7 +114,7 @@ func (db *DB) migrate() error {
 func (db *DB) LogQuery(domain, clientIP string, action models.Action) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := db.insert.Exec(now, domain, clientIP, action); err != nil {
-		log.Printf("log insert error: %v", err)
+		slog.Error("log insert failed", "error", err)
 	}
 }
 
@@ -122,7 +122,7 @@ func (db *DB) GetLogs(limit int) []models.QueryLog {
 	rows, err := db.conn.Query(
 		"SELECT id, timestamp, domain, client_ip, action FROM query_logs ORDER BY id DESC LIMIT ?", limit)
 	if err != nil {
-		log.Printf("getLogs query error: %v", err)
+		slog.Error("getLogs query failed", "error", err)
 		return nil
 	}
 	defer rows.Close()
@@ -133,7 +133,7 @@ func (db *DB) GetLogs(limit int) []models.QueryLog {
 		var ts string
 		var actionStr string
 		if err := rows.Scan(&l.ID, &ts, &l.Domain, &l.ClientIP, &actionStr); err != nil {
-			log.Printf("getLogs scan error: %v", err)
+			slog.Error("getLogs scan failed", "error", err)
 			continue
 		}
 		l.Action = models.Action(actionStr)
@@ -145,7 +145,7 @@ func (db *DB) GetLogs(limit int) []models.QueryLog {
 
 func (db *DB) ClearLogs() {
 	if _, err := db.conn.Exec("DELETE FROM query_logs"); err != nil {
-		log.Printf("clearLogs error: %v", err)
+		slog.Error("clearLogs failed", "error", err)
 	}
 }
 
@@ -161,7 +161,7 @@ func (db *DB) GetStats() models.Stats {
 		FROM query_logs
 	`).Scan(&s.QueriesForwarded, &s.QueriesBlocked, &s.QueriesCustom, &s.QueriesCached)
 	if err != nil {
-		log.Printf("getStats error: %v", err)
+		slog.Error("getStats query failed", "error", err)
 	}
 
 	return s
@@ -170,7 +170,7 @@ func (db *DB) GetStats() models.Stats {
 func (db *DB) IsBlocked(domain string) bool {
 	var count int
 	if err := db.isBlockedSt.QueryRow(domain).Scan(&count); err != nil {
-		log.Printf("isBlocked query error: %v", err)
+		slog.Error("isBlocked query failed", "error", err)
 		return false
 	}
 	if count > 0 {
@@ -179,7 +179,7 @@ func (db *DB) IsBlocked(domain string) bool {
 
 	rows, err := db.wildcardSt.Query()
 	if err != nil {
-		log.Printf("wildcard query error: %v", err)
+		slog.Error("wildcard query failed", "error", err)
 		return false
 	}
 	defer rows.Close()
@@ -187,7 +187,7 @@ func (db *DB) IsBlocked(domain string) bool {
 	for rows.Next() {
 		var w string
 		if err := rows.Scan(&w); err != nil {
-			log.Printf("wildcard scan error: %v", err)
+			slog.Error("wildcard scan failed", "error", err)
 			continue
 		}
 		wild := "." + w
@@ -203,7 +203,7 @@ func (db *DB) GetCustomRecord(domain string) string {
 	var ip string
 	err := db.getCustomSt.QueryRow(domain).Scan(&ip)
 	if err != nil && err != sql.ErrNoRows {
-		log.Printf("getCustomRecord error: %v", err)
+		slog.Error("getCustomRecord failed", "error", err)
 	}
 	return ip
 }
@@ -211,7 +211,7 @@ func (db *DB) GetCustomRecord(domain string) string {
 func (db *DB) GetCustomRecords() map[string]string {
 	rows, err := db.conn.Query("SELECT domain, ip FROM custom_records")
 	if err != nil {
-		log.Printf("getCustomRecords error: %v", err)
+		slog.Error("getCustomRecords query failed", "error", err)
 		return nil
 	}
 	defer rows.Close()
@@ -220,7 +220,7 @@ func (db *DB) GetCustomRecords() map[string]string {
 	for rows.Next() {
 		var domain, ip string
 		if err := rows.Scan(&domain, &ip); err != nil {
-			log.Printf("getCustomRecords scan error: %v", err)
+			slog.Error("getCustomRecords scan failed", "error", err)
 			continue
 		}
 		recs[domain] = ip
@@ -230,20 +230,20 @@ func (db *DB) GetCustomRecords() map[string]string {
 
 func (db *DB) AddCustomRecord(domain, ip string) {
 	if _, err := db.conn.Exec("INSERT OR REPLACE INTO custom_records (domain, ip) VALUES (?, ?)", domain, ip); err != nil {
-		log.Printf("addCustomRecord error: %v", err)
+		slog.Error("addCustomRecord failed", "error", err)
 	}
 }
 
 func (db *DB) DeleteCustomRecord(domain string) {
 	if _, err := db.conn.Exec("DELETE FROM custom_records WHERE domain = ?", domain); err != nil {
-		log.Printf("deleteCustomRecord error: %v", err)
+		slog.Error("deleteCustomRecord failed", "error", err)
 	}
 }
 
 func (db *DB) GetBlocklist() []models.BlockedDomain {
 	rows, err := db.conn.Query("SELECT domain, added_at, wildcard FROM blocklist ORDER BY domain")
 	if err != nil {
-		log.Printf("getBlocklist error: %v", err)
+		slog.Error("getBlocklist query failed", "error", err)
 		return nil
 	}
 	defer rows.Close()
@@ -253,7 +253,7 @@ func (db *DB) GetBlocklist() []models.BlockedDomain {
 		var b models.BlockedDomain
 		var addedAt string
 		if err := rows.Scan(&b.Domain, &addedAt, &b.Wildcard); err != nil {
-			log.Printf("getBlocklist scan error: %v", err)
+			slog.Error("getBlocklist scan failed", "error", err)
 			continue
 		}
 		b.AddedAt, _ = time.Parse(time.RFC3339, addedAt)
@@ -270,19 +270,19 @@ func (db *DB) AddToBlocklist(domain string, wildcard bool) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := db.conn.Exec("INSERT OR REPLACE INTO blocklist (domain, added_at, wildcard) VALUES (?, ?, ?)",
 		domain, now, w); err != nil {
-		log.Printf("addToBlocklist error: %v", err)
+		slog.Error("addToBlocklist failed", "error", err)
 	}
 }
 
 func (db *DB) RemoveFromBlocklist(domain string) {
 	if _, err := db.conn.Exec("DELETE FROM blocklist WHERE domain = ?", domain); err != nil {
-		log.Printf("removeFromBlocklist error: %v", err)
+		slog.Error("removeFromBlocklist failed", "error", err)
 	}
 }
 
 func (db *DB) PruneLogs(before time.Time) {
 	ts := before.UTC().Format(time.RFC3339)
 	if _, err := db.conn.Exec("DELETE FROM query_logs WHERE timestamp < ?", ts); err != nil {
-		log.Printf("pruneLogs error: %v", err)
+		slog.Error("pruneLogs failed", "error", err)
 	}
 }

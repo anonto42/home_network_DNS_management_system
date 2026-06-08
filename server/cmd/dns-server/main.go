@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -28,18 +28,43 @@ var (
 	upstreamDNS = flag.String("upstream", "1.1.1.1:53", "Upstream DNS server")
 	staticDir   = flag.String("static", "", "Directory with static files to serve at /")
 	logPrune    = flag.Duration("log-prune", 0, "Auto-prune logs older than this (e.g. 72h)")
+	logFormat   = flag.String("log-format", "text", "Log format: text or json")
+	logLevel    = flag.String("log-level", "info", "Log level: debug, info, warn, error")
 )
 
 func main() {
 	flag.Parse()
 
+	var level slog.Level
+	switch *logLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	opts := &slog.HandlerOptions{Level: level}
+	var logHandler slog.Handler
+	if *logFormat == "json" {
+		logHandler = slog.NewJSONHandler(os.Stderr, opts)
+	} else {
+		logHandler = slog.NewTextHandler(os.Stderr, opts)
+	}
+	slog.SetDefault(slog.New(logHandler))
+
 	if err := os.MkdirAll("data", 0755); err != nil {
-		log.Fatal(err)
+		slog.Error("create data directory", "error", err)
+		os.Exit(1)
 	}
 
 	database, err := db.Open(*dbPath)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("open database", "error", err)
+		os.Exit(1)
 	}
 	defer database.Close()
 
@@ -51,7 +76,7 @@ func main() {
 			{Addr: "8.8.8.8:53", Timeout: 5 * time.Second},
 		},
 	}
-	handler := dns.NewHandler(database, dnsCfg)
+	dnsHandler := dns.NewHandler(database, dnsCfg)
 
 	var wg sync.WaitGroup
 	quit := make(chan os.Signal, 1)
@@ -61,13 +86,14 @@ func main() {
 	udpAddr := net.UDPAddr{Port: *dnsPort}
 	udpConn, err := net.ListenUDP("udp", &udpAddr)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("listen UDP", "port", *dnsPort, "error", err)
+		os.Exit(1)
 	}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Printf("DNS (UDP) listening on :%d", *dnsPort)
+		slog.Info("listening", "protocol", "UDP", "port", *dnsPort)
 		buf := make([]byte, 1500)
 		for {
 			select {
@@ -82,7 +108,7 @@ func main() {
 			}
 			pkt := make([]byte, n)
 			copy(pkt, buf[:n])
-			go handler.HandleUDP(udpConn, client, pkt)
+			go dnsHandler.HandleUDP(udpConn, client, pkt)
 		}
 	}()
 
@@ -90,12 +116,12 @@ func main() {
 	tcpAddr := net.TCPAddr{Port: *dnsPort}
 	tcpListener, err := net.ListenTCP("tcp", &tcpAddr)
 	if err != nil {
-		log.Printf("Warning: TCP DNS listener on :%d failed (non-fatal): %v", *dnsPort, err)
+		slog.Warn("TCP listener unavailable (non-fatal)", "port", *dnsPort, "error", err)
 	} else {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			log.Printf("DNS (TCP) listening on :%d", *dnsPort)
+			slog.Info("listening", "protocol", "TCP", "port", *dnsPort)
 			for {
 				select {
 				case <-quit:
@@ -108,7 +134,7 @@ func main() {
 				if err != nil {
 					continue
 				}
-				go handleTCPConn(conn, handler)
+				go handleTCPConn(conn, dnsHandler)
 			}
 		}()
 	}
@@ -118,7 +144,7 @@ func main() {
 	r.Use(chimw.Logger)
 	r.Use(api.CORS)
 
-	api.RegisterRoutes(r, database, handler)
+	api.RegisterRoutes(r, database, dnsHandler)
 
 	if *staticDir != "" {
 		r.Handle("/*", http.FileServer(http.Dir(*staticDir)))
@@ -132,9 +158,10 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Printf("HTTP API listening on :%d", *httpPort)
+		slog.Info("listening", "protocol", "HTTP", "port", *httpPort)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal(err)
+			slog.Error("HTTP server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -149,7 +176,7 @@ func main() {
 	}
 
 	<-quit
-	log.Println("Shutting down...")
+	slog.Info("shutting down")
 
 	httpServer.Close()
 	udpConn.Close()
@@ -158,7 +185,7 @@ func main() {
 	}
 
 	wg.Wait()
-	log.Println("Shutdown complete")
+	slog.Info("shutdown complete")
 }
 
 func handleTCPConn(conn *net.TCPConn, handler *dns.Handler) {

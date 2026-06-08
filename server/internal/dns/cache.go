@@ -46,32 +46,25 @@ func NewCache(max int) *Cache {
 }
 
 func (c *Cache) Get(domain string) *cacheEntry {
-	c.mu.RLock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	elem, ok := c.items[domain]
 	if !ok {
-		c.mu.RUnlock()
+		c.misses++
 		return nil
 	}
 
 	entry := elem.Value.(*kv).value
-	now := time.Now()
-	if now.After(entry.ExpiresAt) {
-		c.mu.RUnlock()
-		c.mu.Lock()
-		if elem, ok := c.items[domain]; ok {
-			if now.After(elem.Value.(*kv).value.ExpiresAt) {
-				c.order.Remove(elem)
-				delete(c.items, domain)
-			}
-		}
+	if time.Now().After(entry.ExpiresAt) {
+		c.order.Remove(elem)
+		delete(c.items, domain)
 		c.misses++
-		c.mu.Unlock()
 		return nil
 	}
 
 	c.order.MoveToFront(elem)
 	c.hits++
-	c.mu.RUnlock()
 	return entry
 }
 
