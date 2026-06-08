@@ -143,7 +143,11 @@ func (db *DB) flush(batch []logEntry) {
 		slog.Error("flush begin tx failed", "error", err)
 		return
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			slog.Error("failed to rollback transaction", "error", err)
+		}
+	}()
 
 	stmt, err := tx.Prepare("INSERT INTO query_logs (timestamp, domain, client_ip, action) VALUES (?, ?, ?, ?)")
 	if err != nil {

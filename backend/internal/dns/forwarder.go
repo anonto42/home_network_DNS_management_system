@@ -88,4 +88,3 @@ func (f *PooledForwarder) healthLoop() {
 		}
 	}
 }
-

@@ -64,7 +64,9 @@ func (h *Handler) HandleUDP(conn *net.UDPConn, client *net.UDPAddr, data []byte)
 		slog.Error("pack failed", "error", err)
 		return
 	}
-	conn.WriteToUDP(respData, client)
+	if _, err := conn.WriteToUDP(respData, client); err != nil {
+		slog.Error("failed to write udp response", "error", err)
+	}
 }
 
 func (h *Handler) HandleTCP(conn net.Conn, data []byte, clientIP string) {
@@ -89,7 +91,9 @@ func (h *Handler) HandleTCP(conn net.Conn, data []byte, clientIP string) {
 	tcpResp[0] = byte(len(respData) >> 8)
 	tcpResp[1] = byte(len(respData))
 	copy(tcpResp[2:], respData)
-	conn.Write(tcpResp)
+	if _, err := conn.Write(tcpResp); err != nil {
+		slog.Error("failed to write tcp response", "error", err)
+	}
 }
 
 func (h *Handler) handle(msg *dns.Msg, clientIP string) (*dns.Msg, models.Action) {

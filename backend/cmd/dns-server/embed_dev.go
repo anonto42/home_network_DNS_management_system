@@ -4,7 +4,6 @@ package main
 
 import (
 	"net/http"
-	"os"
 )
 
 func getFileSystem() http.FileSystem {

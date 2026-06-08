@@ -20,13 +20,13 @@ type cacheEntry struct {
 }
 
 type Cache struct {
-	mu        sync.RWMutex
-	items     map[string]*list.Element
-	order     *list.List
-	max       int
-	hits      int64
-	misses    int64
-	negTTL    uint32
+	mu     sync.RWMutex
+	items  map[string]*list.Element
+	order  *list.List
+	max    int
+	hits   int64
+	misses int64
+	negTTL uint32
 }
 
 type kv struct {

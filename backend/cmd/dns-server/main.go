@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -107,7 +108,9 @@ func main() {
 				return
 			default:
 			}
-			udpConn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			if err := udpConn.SetReadDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
+				slog.Error("failed to set udp read deadline", "error", err)
+			}
 			n, client, err := udpConn.ReadFromUDP(buf)
 			if err != nil {
 				continue
@@ -135,7 +138,9 @@ func main() {
 					return
 				default:
 				}
-				tcpListener.SetDeadline(time.Now().Add(500 * time.Millisecond))
+				if err := tcpListener.SetDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
+					slog.Error("failed to set tcp listener deadline", "error", err)
+				}
 				conn, err := tcpListener.AcceptTCP()
 				if err != nil {
 					continue
@@ -200,7 +205,9 @@ func main() {
 
 func handleTCPConn(conn *net.TCPConn, handler *dns.Handler) {
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		slog.Error("failed to set tcp conn deadline", "error", err)
+	}
 
 	lenBuf := make([]byte, 2)
 	if _, err := conn.Read(lenBuf); err != nil {
