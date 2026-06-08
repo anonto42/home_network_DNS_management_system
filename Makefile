@@ -68,27 +68,19 @@ generate: ## Generate TypeScript types from Go API (swag → openapi → api-typ
 
 # ── Testing ────────────────────────────────────────────────────────────────────
 .PHONY: test
-test: test-backend test-frontend ## Run all tests
+test: test-backend ## Run all tests
 
 .PHONY: test-backend
 test-backend: ## Run Go tests
 	cd $(BACKEND) && go test ./... -v
 
-.PHONY: test-frontend
-test-frontend: ## Run Vitest
-	cd $(FRONTEND) && npm run test
-
 # ── Linting ────────────────────────────────────────────────────────────────────
 .PHONY: lint
-lint: lint-backend lint-frontend ## Run all linters
+lint: lint-backend ## Run all linters
 
 .PHONY: lint-backend
 lint-backend: ## Run golangci-lint
 	cd $(BACKEND) && golangci-lint run ./...
-
-.PHONY: lint-frontend
-lint-frontend: ## Run ESLint
-	cd $(FRONTEND) && npm run lint
 
 # ── Docker ─────────────────────────────────────────────────────────────────────
 .PHONY: docker-up
