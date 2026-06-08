@@ -7,23 +7,25 @@ export default function RecordManager() {
   const [ip, setIp] = useState('')
 
   useEffect(() => {
-    getRecords().then(setRecords)
+    getRecords().then((data) => setRecords(data || {}))
   }, [])
 
   const handleAdd = async () => {
     if (!domain || !ip) return
     await addRecord(domain, ip)
-    setRecords(await getRecords())
+    const data = await getRecords()
+    setRecords(data || {})
     setDomain('')
     setIp('')
   }
 
   const handleDelete = async (d: string) => {
     await deleteRecord(d)
-    setRecords(await getRecords())
+    const data = await getRecords()
+    setRecords(data || {})
   }
 
-  const entries = Object.entries(records)
+  const entries = Object.entries(records || {})
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
