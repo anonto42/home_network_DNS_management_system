@@ -14,7 +14,8 @@ export default function LogTable() {
 
   usePolling(async () => {
     try {
-      setLogs(await getLogs())
+      const data = await getLogs()
+      setLogs(data || [])
     } catch {}
   }, 3000)
 
@@ -43,7 +44,7 @@ export default function LogTable() {
             </tr>
           </thead>
           <tbody>
-            {logs.length === 0 ? (
+            {(!logs || logs.length === 0) ? (
               <tr>
                 <td colSpan={4} className="p-6 text-center text-gray-600">
                   No queries yet. Make a DNS request to see it here.
