@@ -1,7 +1,7 @@
 # ─── Metadata ──────────────────────────────────────────────────────────
 SHELL := /bin/bash
 BACKEND  := backend
-FRONTEND := frontend/apps/web-app
+FRONTEND := frontend
 
 # Colors for output
 GREEN  := $(shell tput -Txterm setaf 2)

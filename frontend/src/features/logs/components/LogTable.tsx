@@ -50,7 +50,7 @@ export default function LogTable() {
                 </td>
               </tr>
             ) : (
-              [...logs].reverse().map((l) => (
+              logs.map((l) => (
                 <tr key={l.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                   <td className="p-3 text-gray-400 font-mono text-xs">
                     {new Date(l.timestamp).toLocaleTimeString()}

@@ -4,6 +4,7 @@ import { getBlocklist, addToBlocklist, removeFromBlocklist, type BlockedDomain }
 export default function BlocklistManager() {
   const [list, setList] = useState<BlockedDomain[]>([])
   const [domain, setDomain] = useState('')
+  const [wildcard, setWildcard] = useState(false)
 
   useEffect(() => {
     getBlocklist().then(setList)
@@ -11,9 +12,10 @@ export default function BlocklistManager() {
 
   const handleAdd = async () => {
     if (!domain) return
-    await addToBlocklist(domain)
+    await addToBlocklist(domain, wildcard)
     setList(await getBlocklist())
     setDomain('')
+    setWildcard(false)
   }
 
   const handleDelete = async (d: string) => {
@@ -25,19 +27,30 @@ export default function BlocklistManager() {
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
       <h2 className="text-sm font-medium text-gray-400 mb-4">Blocked Domains</h2>
 
-      <div className="flex gap-2 mb-4">
-        <input
-          value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          placeholder="ads.example.com"
-          className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-cyan-500"
-        />
-        <button
-          onClick={handleAdd}
-          className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-400"
-        >
-          Block
-        </button>
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex gap-2">
+          <input
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="ads.example.com"
+            className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-cyan-500"
+          />
+          <button
+            onClick={handleAdd}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-400"
+          >
+            Block
+          </button>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            checked={wildcard}
+            onChange={(e) => setWildcard(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-700 bg-gray-950 text-red-500 focus:ring-red-500"
+          />
+          <span className="text-xs text-gray-400">Match subdomains (wildcard)</span>
+        </label>
       </div>
 
       {list.length === 0 ? (

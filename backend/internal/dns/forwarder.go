@@ -18,14 +18,12 @@ type PooledForwarder struct {
 	upstreams []Upstream
 	mu        sync.RWMutex
 	healthy   map[int]bool
-	client    *dns.Client
 }
 
 func NewPooledForwarder(upstreams []Upstream) *PooledForwarder {
 	f := &PooledForwarder{
 		upstreams: upstreams,
 		healthy:   make(map[int]bool),
-		client:    &dns.Client{Net: "udp"},
 	}
 
 	for i := range upstreams {
@@ -52,8 +50,8 @@ func (f *PooledForwarder) Forward(req *dns.Msg) (*dns.Msg, error) {
 		}
 
 		up := f.upstreams[i]
-		f.client.Timeout = up.Timeout
-		resp, _, err := f.client.Exchange(req, up.Addr)
+		client := &dns.Client{Net: "udp", Timeout: up.Timeout}
+		resp, _, err := client.Exchange(req, up.Addr)
 		if err == nil {
 			return resp, nil
 		}
