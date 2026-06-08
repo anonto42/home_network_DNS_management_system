@@ -1,12 +1,16 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache gcc musl-dev
 COPY . .
+ENV CGO_ENABLED=1
 RUN go build -o dns-server ./cmd/dns-server
 
-FROM golang:1.24-alpine AS dev
+FROM golang:1.25-alpine AS dev
 WORKDIR /app
-RUN go install github.com/air-verse/air@v1.61.1
+RUN apk add --no-cache gcc musl-dev
+RUN go install github.com/air-verse/air@latest
 COPY . .
+ENV CGO_ENABLED=1
 CMD ["air", "-c", ".air.toml"]
 
 FROM alpine:latest
