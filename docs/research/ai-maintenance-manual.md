@@ -12,8 +12,10 @@ This manual governs how AI assistants (agents) should maintain and update this c
 - **API Consistency:** All new endpoints must be registered in `internal/api/router.go` and verified against the Swagger definition.
 - **Persistence:** High-frequency writes MUST use the batch-log-writer pattern implemented in `db/sqlite.go`.
 
-## 3. UI/UX Contract
-- **Styles:** Use TailwindCSS only. Avoid custom CSS unless absolutely necessary.
+## 3. UI/UX Contract (Stitch Design)
+- **Design System:** All frontend components MUST strictly adhere to the "Stitch Design" principles.
+- **Consistency:** Use the defined color palette, component patterns, and spacing rules from Stitch Design.
+- **Styles:** Use TailwindCSS, mapped to Stitch Design utility classes. Avoid custom ad-hoc styling.
 - **Data Fetching:** Always use the `usePolling` hook for live data.
 - **Resilience:** All API data fetching MUST handle `null`/`undefined` states by defaulting to empty arrays/objects before accessing `.length` or `Object.entries()`.
 
