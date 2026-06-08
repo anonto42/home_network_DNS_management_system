@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getStatus, type Status } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
+import { Card } from '../../../components/ui/Card'
 
 function fmtUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400)
@@ -33,22 +34,24 @@ export default function StatsCards() {
   const hitRate = total > 0 ? Math.round((stats.cache_hits / total) * 100) : 0
 
   const cards = [
-    { label: 'Forwarded', value: stats.queries_forwarded, color: 'text-blue-400' },
-    { label: 'Blocked', value: stats.queries_blocked, color: 'text-red-400' },
-    { label: 'Custom', value: stats.queries_custom, color: 'text-yellow-400' },
-    { label: 'Cached', value: stats.queries_cached, color: 'text-green-400' },
-    { label: 'Cache Size', value: stats.cache_size, color: 'text-purple-400' },
-    { label: 'Hit Rate', value: `${hitRate}%`, color: 'text-cyan-400' },
-    { label: 'Uptime', value: fmtUptime(stats.uptime_seconds), color: 'text-gray-400' },
+    { label: 'Total Queries', value: stats.queries_forwarded, color: 'text-primary', icon: 'query_stats' },
+    { label: 'Queries Blocked', value: stats.queries_blocked, color: 'text-error', icon: 'block' },
+    { label: 'Percent Blocked', value: `${hitRate}%`, color: 'text-secondary', icon: 'percent' },
+    { label: 'Domains on Adlist', value: stats.cache_size, color: 'text-tertiary', icon: 'list' },
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg mb-xl">
       {cards.map((c) => (
-        <div key={c.label} className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-          <div className="text-xs text-gray-500 uppercase tracking-wide">{c.label}</div>
-          <div className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</div>
-        </div>
+        <Card key={c.label}>
+          <div className="flex justify-between items-start mb-md">
+            <div className={`p-sm bg-surface-container rounded-lg`}>
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{c.icon}</span>
+            </div>
+          </div>
+          <h3 className="font-label-md text-on-surface-variant mb-xs">{c.label}</h3>
+          <p className={`font-headline-md text-headline-md text-on-surface ${c.color}`}>{c.value.toLocaleString()}</p>
+        </Card>
       ))}
     </div>
   )
