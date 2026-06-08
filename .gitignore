@@ -8,8 +8,8 @@ backend/docs/
 *.db-wal
 
 # Frontend
-frontend/apps/web-app/node_modules/
-frontend/apps/web-app/dist/
+**/node_modules/
+**/dist/
 
 # Builds
 bin/
