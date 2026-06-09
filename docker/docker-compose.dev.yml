@@ -1,10 +1,8 @@
-version: "3.9"
-
 services:
   dns-server:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ../
+      dockerfile: docker/Dockerfile
       target: dev
     image: dns-server:dev
     container_name: dns-server-dev
@@ -17,7 +15,7 @@ services:
       - DB_PATH=/app/data/dns.db
       - STATIC_DIR=/app/static
     volumes:
-      - ./backend:/app
+      - ../backend:/app
       - dns-data:/app/data
     command: air -c .air.toml
 
@@ -25,7 +23,7 @@ services:
     image: node:22-alpine
     working_dir: /app
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
     ports:
       - "5173:5173"
     entrypoint: ["/bin/sh", "-c", "npm install && npm run dev -- --host"]

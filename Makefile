@@ -85,15 +85,15 @@ lint-backend: ## Run golangci-lint
 # ── Docker ─────────────────────────────────────────────────────────────────────
 .PHONY: docker-up
 docker-up: ## Start production stack
-	docker compose up -d --build
+	docker compose -f docker/docker-compose.yml up -d --build
 
 .PHONY: docker-up-dev
 docker-up-dev: ## Start dev stack with hot-reload volumes
-	docker compose -f docker-compose.dev.yml up --build
+	docker compose -f docker/docker-compose.dev.yml up --build
 
 .PHONY: docker-down
 docker-down: ## Stop all containers
-	docker compose down
+	docker compose -f docker/docker-compose.yml down
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 .PHONY: setup
