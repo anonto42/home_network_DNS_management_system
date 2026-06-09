@@ -3,9 +3,10 @@ import React from 'react';
 export const Sidebar: React.FC<{ activeTab: string, setTab: (tab: string) => void }> = ({ activeTab, setTab }) => {
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { key: 'logs', label: 'Activity Logs', icon: 'list_alt' },
     { key: 'records', label: 'DNS Records', icon: 'dns' },
+    { key: 'steering', label: 'Traffic Steering', icon: 'alt_route' },
     { key: 'blocklist', label: 'Security', icon: 'shield' },
+    { key: 'logs', label: 'Activity Logs', icon: 'list_alt' },
   ];
 
   return (
@@ -24,7 +25,7 @@ export const Sidebar: React.FC<{ activeTab: string, setTab: (tab: string) => voi
           <button
             key={item.key}
             onClick={() => setTab(item.key)}
-            className={`w-full flex items-center gap-md p-md rounded-lg transition-colors duration-200 ${
+            className={`w-full flex items-center gap-md p-md rounded-lg transition-colors duration-200 cursor-pointer active:scale-95 ${
               activeTab === item.key
                 ? 'bg-primary-container text-on-primary-container font-semibold'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
@@ -35,6 +36,20 @@ export const Sidebar: React.FC<{ activeTab: string, setTab: (tab: string) => voi
           </button>
         ))}
       </nav>
+      <button className="mb-xl w-full bg-primary text-on-primary font-label-md text-label-md py-md rounded-lg flex items-center justify-center gap-sm shadow-sm hover:opacity-90 active:scale-95 transition-all">
+        <span className="material-symbols-outlined">add</span>
+        Add New Zone
+      </button>
+      <div className="mt-auto space-y-sm">
+        <a className="flex items-center gap-md p-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200 cursor-pointer rounded-lg" href="#">
+          <span className="material-symbols-outlined">settings</span>
+          <span className="font-body-md text-body-md">Settings</span>
+        </a>
+        <a className="flex items-center gap-md p-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200 cursor-pointer rounded-lg" href="#">
+          <span className="material-symbols-outlined">help_outline</span>
+          <span className="font-body-md text-body-md">Support</span>
+        </a>
+      </div>
     </aside>
   );
 };

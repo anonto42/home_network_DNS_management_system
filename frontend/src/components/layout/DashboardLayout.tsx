@@ -9,13 +9,11 @@ interface LayoutProps {
 }
 
 export const DashboardLayout: React.FC<LayoutProps> = ({ children, activeTab, setTab }) => (
-  <div className="flex bg-surface text-on-surface">
+  <div className="bg-surface text-on-surface">
     <Sidebar activeTab={activeTab} setTab={setTab} />
-    <main className="ml-[280px] pt-16 min-h-screen flex-1">
-      <Header />
-      <div className="p-xl max-w-[1440px] mx-auto">
-        {children}
-      </div>
+    <Header />
+    <main className="ml-[280px] pt-16 min-h-screen p-xl max-w-[1440px]">
+      {children}
     </main>
   </div>
 );
