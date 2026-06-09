@@ -10,8 +10,7 @@ import {
   AlertCircle,
   Settings,
   LogOut,
-  User,
-  CloudLightning
+  User
 } from 'lucide-react';
 import { useLayout } from '../../hooks/useLayout';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,7 @@ export const Header: React.FC = () => {
     <header 
       className={cn(
         "h-16 fixed top-0 right-0 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex justify-between items-center px-4 md:px-6 z-40 transition-all duration-300 shadow-sm",
-        isSidebarCollapsed ? 'w-full md:w-[calc(100%-80px)]' : 'w-full md:w-[calc(100%-280px)]'
+        isSidebarCollapsed ? 'w-full md:w-[calc(100%-72px)]' : 'w-full md:w-[calc(100%-256px)]'
       )}
     >
       <div className="flex items-center gap-2 md:gap-4 flex-1">
@@ -62,13 +61,16 @@ export const Header: React.FC = () => {
           </SheetContent>
         </Sheet>
         
-        <div className="relative max-w-md w-full hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative max-w-md w-full hidden md:block group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/70 group-focus-within:text-primary transition-colors" />
           <input 
-            className="w-full bg-muted/30 border border-border/50 rounded-lg pl-9 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors" 
+            className="w-full bg-card border border-primary/20 rounded-lg pl-9 pr-10 py-2 text-sm text-foreground placeholder:italic placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:bg-background/90 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200" 
             placeholder="Search queries, domains..." 
             type="text"
           />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:flex items-center gap-0.5 select-none rounded border border-border/70 bg-muted px-1.5 font-mono text-[9px] font-bold text-muted-foreground/80">
+            <span>⌘</span><span>K</span>
+          </div>
         </div>
       </div>
 
@@ -76,73 +78,43 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95 transition-transform">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-2.5 right-2.5 flex h-1.5 w-1.5">
+                <span className="absolute top-2 right-2 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-destructive"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
                 </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 mt-2 border-border/50 shadow-md" align="end">
-              <div className="p-4 border-b border-border/50 flex items-center justify-between bg-muted/5">
+            <PopoverContent className="w-80 p-0 mt-2 border-border/50 shadow-lg" align="end">
+              <div className="p-3 border-b border-border/50 flex items-center justify-between bg-muted/5">
                 <h4 className="font-bold text-[10px] uppercase tracking-widest text-foreground">Notifications</h4>
                 <Button variant="ghost" size="sm" className="h-auto p-0 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">Mark all as read</Button>
               </div>
               <div className="max-h-[300px] overflow-y-auto">
-                <div className="p-4 flex gap-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border/50">
-                  <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer border-b border-border/50">
+                  <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 border border-destructive/20">
                     <AlertCircle className="h-4 w-4 text-destructive" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-foreground leading-none">High Traffic Alert</p>
+                    <p className="text-xs font-bold text-foreground leading-none">High Traffic Alert</p>
                     <p className="text-xs text-muted-foreground leading-snug">Anomaly detected in north-america-east-1 cluster.</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">2 mins ago</p>
+                    <p className="text-[9px] text-muted-foreground/70 font-bold uppercase">2 mins ago</p>
                   </div>
                 </div>
-                <div className="p-4 flex gap-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                  <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-foreground leading-none">Sync Complete</p>
+                    <p className="text-xs font-bold text-foreground leading-none">Sync Complete</p>
                     <p className="text-xs text-muted-foreground leading-snug">All blocklists updated successfully.</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">1 hour ago</p>
+                    <p className="text-[9px] text-muted-foreground/70 font-bold uppercase">1 hour ago</p>
                   </div>
                 </div>
               </div>
-              <div className="p-2 border-t border-border/50">
+              <div className="p-2 border-t border-border/50 bg-muted/5">
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-primary justify-center h-8">View all notifications</Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
-                <Cloud className="h-5 w-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-4 mt-2 border-border/50 shadow-md" align="end">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center border border-primary/10">
-                  <CloudLightning className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs text-foreground tracking-tight">Cloud Status</h4>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Connected as admin</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
-                  <span className="text-muted-foreground">Last Sync</span>
-                  <span className="text-foreground">2 mins ago</span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
-                  <span className="text-muted-foreground">Storage</span>
-                  <span className="text-foreground">12.5 MB / 100 MB</span>
-                </div>
-                <Button className="w-full h-8 text-[10px] font-bold uppercase tracking-widest mt-2 shadow-sm">Sync Now</Button>
               </div>
             </PopoverContent>
           </Popover>

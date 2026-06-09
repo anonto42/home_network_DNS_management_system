@@ -8,7 +8,6 @@ import {
   ListTodo, 
   Plus, 
   Settings, 
-  HelpCircle,
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-react';
@@ -26,7 +25,7 @@ const Logo = ({ collapsed }: { collapsed: boolean }) => (
     </div>
     {!collapsed && (
       <div className="flex flex-col">
-        <h1 className="text-base font-bold leading-tight tracking-tight">NetShield</h1>
+        <h1 className="text-base font-bold leading-tight tracking-tight text-foreground">NetShield</h1>
         <p className="text-[10px] text-muted-foreground font-semibold tracking-widest uppercase opacity-70">Enterprise</p>
       </div>
     )}
@@ -53,56 +52,50 @@ export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = 
           <NavLink
             key={item.path}
             to={item.path}
+            end={item.path === '/'}
             className={({ isActive }) => cn(
-              "flex items-center rounded-md transition-all duration-200 group p-2 mx-1",
-              collapsed ? "justify-center" : "gap-3 px-3",
-              isActive 
-                ? "bg-primary text-primary-foreground shadow-sm" 
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              "flex items-center transition-all duration-200 group relative rounded-md",
+              collapsed ? "justify-center p-2 mx-1" : "gap-3 px-3 py-2 mx-1",
+              isActive
+                ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5 rounded-r-md rounded-l-none"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:translate-x-[2px]"
             )}
-            title={collapsed ? item.label : ''}
+            title={collapsed ? item.label : undefined}
           >
-            <item.icon className={cn("h-5 w-5 shrink-0", !collapsed && "group-hover:scale-110 transition-transform")} />
+            <item.icon className={cn(
+              "h-5 w-5 shrink-0",
+              !collapsed && "group-hover:scale-105 transition-transform duration-200"
+            )} />
             {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
       <div className="px-3 mt-auto space-y-1">
-        <Button 
+        <Button
           className={cn(
-            "w-full rounded-md flex items-center transition-all h-10 mb-2",
+            "w-full rounded-md flex items-center h-10 mb-2 hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200",
             collapsed ? "justify-center p-0" : "gap-2 justify-start px-3"
           )}
         >
           <Plus className="h-4 w-4" />
-          {!collapsed && <span className="font-semibold text-xs">Add New Zone</span>}
+          {!collapsed && <span className="font-semibold text-xs uppercase tracking-widest">Add New Zone</span>}
         </Button>
-        
-        <NavLink 
-          to="/settings" 
+
+        <NavLink
+          to="/settings"
           className={({ isActive }) => cn(
-            "flex items-center transition-all duration-200 rounded-md p-2 mx-1",
-            collapsed ? "justify-center" : "gap-3 px-3",
-            isActive ? "bg-muted text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            "flex items-center transition-all duration-200 relative rounded-md",
+            collapsed ? "justify-center p-2 mx-1" : "gap-3 px-3 py-2 mx-1",
+            isActive
+              ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5 rounded-r-md rounded-l-none"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:translate-x-[2px]"
           )}
-          title={collapsed ? "Settings" : ""}
+          title={collapsed ? "Settings" : undefined}
         >
           <Settings className="h-5 w-5 shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Settings</span>}
         </NavLink>
-
-        <a 
-          href="#"
-          className={cn(
-            "flex items-center transition-all duration-200 rounded-md p-2 mx-1 text-muted-foreground hover:text-foreground hover:bg-muted",
-            collapsed ? "justify-center" : "gap-3 px-3"
-          )}
-          title={collapsed ? "Help & Support" : ""}
-        >
-          <HelpCircle className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="text-sm font-medium">Support</span>}
-        </a>
       </div>
     </div>
   );
@@ -112,16 +105,16 @@ export const Sidebar: React.FC = () => {
   const { isSidebarCollapsed, toggleSidebar } = useLayout();
 
   return (
-    <aside 
+    <aside
       className={cn(
         "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-background border-r border-border/50 transition-all duration-300 z-50 shadow-sm",
-        isSidebarCollapsed ? "w-20" : "w-[280px]"
+        isSidebarCollapsed ? "w-[72px]" : "w-64"
       )}
     >
       <div className="absolute -right-3 top-20 z-50">
-        <Button 
-          variant="outline" 
-          size="icon" 
+        <Button
+          variant="outline"
+          size="icon"
           onClick={toggleSidebar}
           className="h-6 w-6 rounded-full shadow-sm bg-background border-border/50 hover:bg-muted"
         >
@@ -132,4 +125,3 @@ export const Sidebar: React.FC = () => {
     </aside>
   );
 };
-

@@ -27,12 +27,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const recordTypeVariants: Record<string, 'default' | 'secondary' | 'outline'> = {
-  A: 'secondary',
-  CNAME: 'outline',
-  AAAA: 'default',
-  MX: 'outline',
-  TXT: 'outline',
+const recordTypeStyles: Record<string, string> = {
+  A: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20',
+  CNAME: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
+  AAAA: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20',
+  MX: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
+  TXT: 'bg-muted/50 text-muted-foreground border border-border/50',
 }
 
 function getTypeLabel(ip: string): string {
@@ -71,27 +71,27 @@ export default function RecordManager() {
   return (
     <div className="container mx-auto py-6 space-y-8">
       <div className="space-y-1">
-        <h2 className="text-2xl font-bold tracking-tight">Local DNS Records</h2>
-        <p className="text-muted-foreground">Manage authoritative records for your local network environment.</p>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Local DNS Records</h2>
+        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Manage authoritative records for your local network environment.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <Card className="lg:col-span-8 shadow-sm border-border/50">
-          <CardHeader className="pb-4 border-b border-border/50">
+          <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
               <PlusCircle className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg font-bold tracking-tight">Create New Record</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Create New Record</CardTitle>
             </div>
             <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Add a new DNS record to your local network.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground">Record Type</label>
                 <select
                   value={recordType}
                   onChange={(e) => setRecordType(e.target.value)}
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-border/50 bg-muted/5 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium"
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium"
                 >
                   <option>A (IPv4 Address)</option>
                   <option>AAAA (IPv6 Address)</option>
@@ -129,12 +129,15 @@ export default function RecordManager() {
         </Card>
 
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-          <Card className="bg-primary text-primary-foreground shadow-sm border-none">
+          {/* Stats promo card — semantic tokens only */}
+          <Card className="bg-primary/5 border-primary/20 shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
             <CardContent className="p-6 flex flex-col justify-between h-full min-h-[140px]">
-              <Network className="h-8 w-8" />
+              <div className="p-2 w-fit bg-primary/10 rounded-lg border border-primary/20 shadow-sm">
+                <Network className="h-6 w-6 text-primary" />
+              </div>
               <div>
-                <p className="text-3xl font-bold tracking-tight">{entries.length > 0 ? (entries.length * 30).toLocaleString() : '0'}</p>
-                <p className="text-[10px] uppercase tracking-wider opacity-90 font-semibold">Total Queries/24h</p>
+                <p className="text-3xl font-bold tracking-tight text-foreground">{entries.length > 0 ? (entries.length * 30).toLocaleString() : '0'}</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Total Queries / 24h</p>
               </div>
             </CardContent>
           </Card>
@@ -142,17 +145,17 @@ export default function RecordManager() {
             <Card className="shadow-sm border-border/50">
               <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-2xl font-bold">{entries.length}</p>
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Active Records</p>
+                  <p className="text-2xl font-bold text-foreground">{entries.length}</p>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Active Records</p>
                 </div>
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
               </CardContent>
             </Card>
             <Card className="shadow-sm border-border/50">
               <CardContent className="p-6 flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-2xl font-bold">0</p>
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Conflicts</p>
+                  <p className="text-2xl font-bold text-foreground">0</p>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Conflicts</p>
                 </div>
                 <AlertCircle className="h-6 w-6 text-destructive" />
               </CardContent>
@@ -161,63 +164,63 @@ export default function RecordManager() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+      <Card className="overflow-hidden shadow-sm border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/50 bg-muted/5">
           <div>
-            <CardTitle>Existing Local Records</CardTitle>
-            <CardDescription>Authoritative records for your local domain.</CardDescription>
+            <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Existing Local Records</CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Authoritative records for your local domain.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2 text-[10px] font-bold uppercase tracking-widest border-border/50 shadow-sm">
               <Filter className="h-4 w-4" /> Filter
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2 text-[10px] font-bold uppercase tracking-widest border-border/50 shadow-sm">
               <Download className="h-4 w-4" /> Export
             </Button>
           </div>
         </CardHeader>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto p-4 pt-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[100px]">Type</TableHead>
-                <TableHead>Domain Name</TableHead>
-                <TableHead>Value / IP</TableHead>
-                <TableHead>TTL</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow className="bg-muted/20 border-b border-border/50">
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[100px]">Type</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Domain Name</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Value / IP</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">TTL</TableHead>
+                <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground text-sm font-medium">
                     No custom records yet.
                   </TableCell>
                 </TableRow>
               ) : (
                 entries.map(([d, val]) => {
                   const type = getTypeLabel(val)
-                  const variant = recordTypeVariants[type] || 'default'
+                  const style = recordTypeStyles[type] || recordTypeStyles.TXT
                   return (
-                    <TableRow key={d} className="group transition-colors">
+                    <TableRow key={d} className="group transition-all duration-200 hover:bg-muted/50 hover:shadow-sm">
                       <TableCell>
-                        <Badge variant={variant} className="font-bold text-[10px] px-2 py-0">{type}</Badge>
+                        <Badge className={`font-bold text-[9px] px-2 py-0 border-none ${style}`}>{type}</Badge>
                       </TableCell>
                       <TableCell>
                         <span className="font-semibold text-primary hover:underline cursor-pointer">{d}</span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 group/val">
-                          <code className="bg-muted px-2 py-0.5 rounded text-xs border">{val}</code>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/val:opacity-100">
+                          <code className="bg-muted px-2 py-0.5 rounded text-xs font-medium border border-border/50">{val}</code>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/val:opacity-100 transition-opacity">
                             <Copy className="h-3 w-3 text-muted-foreground" />
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">3600s</TableCell>
+                      <TableCell className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">3600s</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(d)}>
@@ -232,33 +235,21 @@ export default function RecordManager() {
             </TableBody>
           </Table>
         </div>
-        <div className="p-4 bg-muted/20 border-t flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Showing {entries.length} records</span>
-          <div className="flex gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button size="sm" className="h-8 px-3 text-xs">1</Button>
-            <Button variant="outline" size="icon" className="h-8 w-8">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </Card>
 
-      <Card className="bg-slate-900 text-white border-none overflow-hidden relative p-8 md:p-12 shadow-md">
+      {/* Pro upsell card — semantic tokens only */}
+      <Card className="bg-primary/5 border-primary/20 overflow-hidden relative p-8 md:p-12 shadow-sm">
         <div className="relative z-10 max-w-2xl space-y-4">
-          <Badge variant="outline" className="text-white border-white/20 mb-2 px-3 py-1">Pro Feature</Badge>
-          <h4 className="text-2xl md:text-3xl font-bold">Need to manage global zones?</h4>
-          <p className="text-slate-400 text-sm md:text-base leading-relaxed">NetShield Pro allows you to synchronize local records with global edge nodes for sub-millisecond resolution worldwide.</p>
-          <Button className="gap-2 group shadow-sm bg-white text-slate-900 hover:bg-white/90" size="lg">
+          <Badge variant="outline" className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary border-primary/30 bg-primary/10">Pro Feature</Badge>
+          <h4 className="text-2xl md:text-3xl font-bold text-foreground">Need to manage global zones?</h4>
+          <p className="text-muted-foreground text-sm md:text-base leading-relaxed">NetShield Pro allows you to synchronize local records with global edge nodes for sub-millisecond resolution worldwide.</p>
+          <Button className="gap-2 group shadow-sm text-[10px] font-bold uppercase tracking-widest" size="lg">
             Upgrade to Pro
             <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Button>
         </div>
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/5 to-transparent pointer-events-none" />
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
       </Card>
     </div>
   )
 }
-

@@ -60,17 +60,17 @@ export default function BlocklistManager() {
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight">Blocklist Management</h2>
-          <p className="text-muted-foreground">Control the security perimeter of your network by managing active blocklists.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Blocklist Management</h2>
+          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Control the security perimeter of your network by managing active blocklists.</p>
         </div>
-        <Card className="flex items-center gap-6 p-6 min-w-full md:min-w-[320px] shadow-sm ">
-          <div className="h-12 w-12 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive shrink-0">
+        <Card className="flex items-center gap-6 p-6 min-w-full md:min-w-[320px] shadow-sm border-border/50">
+          <div className="h-12 w-12 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive shrink-0 border border-destructive/20">
             <Ban className="h-6 w-6" />
           </div>
           <div>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Blocked Domains</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">{list.length.toLocaleString()}</span>
+              <span className="text-3xl font-bold text-foreground">{list.length.toLocaleString()}</span>
               <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border-none">+{Math.max(1, Math.round(list.length * 0.01))} today</Badge>
             </div>
           </div>
@@ -79,9 +79,9 @@ export default function BlocklistManager() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 space-y-8">
-          <Card className="shadow-sm ">
-            <CardHeader className="pb-4  ">
-              <CardTitle className="text-lg font-bold tracking-tight">Add New Adlist</CardTitle>
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold tracking-tight text-foreground">Add New Adlist</CardTitle>
               <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Add a new source for domain filtering.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -108,38 +108,39 @@ export default function BlocklistManager() {
                   <textarea
                     value={listDesc}
                     onChange={(e) => setListDesc(e.target.value)}
-                    className="flex min-h-[80px] w-full rounded-md border  bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium"
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium"
                     placeholder="Brief description of this list..."
                     rows={2}
                   />
                 </div>
-                <Button className="w-full gap-2 shadow-sm" type="submit">
+                <Button className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest" type="submit">
                   <PlusCircle className="h-4 w-4" /> Save and Sync List
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          <Card className="relative h-[240px] overflow-hidden group border-none bg-slate-900 shadow-md">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
-              <Badge variant="outline" className="w-fit mb-2 text-white border-white/20">Network Insights</Badge>
-              <h4 className="text-white font-semibold text-lg leading-tight mb-1">Protect your fleet with AI-driven threat intelligence.</h4>
-              <p className="text-white/70 text-sm">Automated updates for over 2M malicious domains.</p>
+          {/* Network Insights promo card — uses semantic tokens only */}
+          <Card className="relative h-[240px] overflow-hidden group border border-primary/20 bg-primary/5 shadow-sm transition-transform duration-300 hover:scale-[1.01]">
+            <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/40 to-transparent flex flex-col justify-end p-6">
+              <Badge variant="outline" className="w-fit mb-2 text-primary border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-widest">Network Insights</Badge>
+              <h4 className="text-foreground font-bold text-lg leading-snug mb-1.5">Protect your fleet with AI-driven threat intelligence.</h4>
+              <p className="text-muted-foreground text-sm">Automated updates for over 2M malicious domains.</p>
             </div>
           </Card>
         </div>
 
-        <Card className="lg:col-span-8 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between  pb-4">
+        <Card className="lg:col-span-8 overflow-hidden shadow-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/50 bg-muted/5">
             <div>
-              <CardTitle>Active Blocklists</CardTitle>
-              <CardDescription>Currently active domain filters.</CardDescription>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Active Blocklists</CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Currently active domain filters.</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2 text-[10px] font-bold uppercase tracking-widest border-border/50 shadow-sm">
                 <Download className="h-4 w-4" /> Update All
               </Button>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2 text-[10px] font-bold uppercase tracking-widest border-border/50 shadow-sm">
                 <Filter className="h-4 w-4" /> Filters
               </Button>
             </div>
@@ -147,35 +148,35 @@ export default function BlocklistManager() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[300px]">Source Name</TableHead>
-                  <TableHead>Domains</TableHead>
-                  <TableHead>Last Synced</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right"></TableHead>
+                <TableRow className="bg-muted/20 border-b border-border/50">
+                  <TableHead className="w-[300px] text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Source Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Domains</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Last Synced</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sources.map((source) => (
-                  <TableRow key={source.name} className="group">
+                  <TableRow key={source.name} className="group transition-all duration-200 hover:bg-muted/50">
                     <TableCell>
                       <div className="flex flex-col gap-0.5">
-                        <span className={`font-semibold ${!source.enabled && 'text-muted-foreground'}`}>{source.name}</span>
-                        <span className="text-xs text-muted-foreground truncate max-w-[240px] font-mono">{source.url}</span>
+                        <span className={`font-semibold text-sm ${!source.enabled ? 'text-muted-foreground' : 'text-foreground'}`}>{source.name}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[240px] font-mono">{source.url}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={`font-mono text-xs ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                      <span className={`font-mono text-xs font-bold ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
                         {source.domains.toLocaleString()}
                       </span>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                       {source.lastSynced}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Switch checked={source.enabled} />
-                        <span className={`text-xs font-medium ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
                           {source.enabled ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
@@ -183,18 +184,18 @@ export default function BlocklistManager() {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="gap-2">
+                        <DropdownMenuContent align="end" className="border-border/50">
+                          <DropdownMenuItem className="gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer">
                             <Download className="h-4 w-4" /> Sync Now
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer">
                             <Cloud className="h-4 w-4" /> View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive gap-2">
+                          <DropdownMenuItem className="text-destructive gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer focus:bg-destructive/10 focus:text-destructive">
                             <Ban className="h-4 w-4" /> Disable
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -205,15 +206,15 @@ export default function BlocklistManager() {
               </TableBody>
             </Table>
           </div>
-          <div className="p-4 bg-muted/30 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span className="text-xs text-muted-foreground">Showing {sources.length} active blocklists</span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8">
-                <ChevronLeft className="h-4 w-4" />
+          <div className="p-4 border-t border-border/50 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Showing {sources.length} active blocklists</span>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50">
+                <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
-              <Button size="sm" className="h-8 w-8 p-0">1</Button>
-              <Button variant="outline" size="icon" className="h-8 w-8">
-                <ChevronRight className="h-4 w-4" />
+              <Button size="sm" className="h-7 px-3 text-[10px] font-bold rounded-md">1</Button>
+              <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50">
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -221,12 +222,11 @@ export default function BlocklistManager() {
       </div>
 
       <div className="fixed bottom-6 right-6 z-50">
-        <Button size="lg" className="rounded-full shadow-lg h-14 px-6 gap-3 group">
-          <Zap className="h-6 w-6 group-hover:rotate-12 transition-transform" />
+        <Button size="lg" className="rounded-full shadow-lg h-14 px-6 gap-3 group text-[10px] font-bold uppercase tracking-widest">
+          <Zap className="h-5 w-5 group-hover:rotate-12 transition-transform" />
           <span className="hidden sm:inline">Optimise All Lists</span>
         </Button>
       </div>
     </div>
   )
 }
-

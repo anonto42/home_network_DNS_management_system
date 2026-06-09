@@ -8,12 +8,10 @@ import {
   Copy, 
   ChevronLeft, 
   ChevronRight,
-  MoreHorizontal
 } from 'lucide-react'
 import { getLogs, type QueryLog } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -23,26 +21,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 
-const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline', label: string }> = {
-  forwarded: { variant: 'secondary', label: 'Allowed' },
-  blocked: { variant: 'destructive', label: 'Blocked' },
-  custom: { variant: 'outline', label: 'Custom' },
-  cached: { variant: 'default', label: 'Cached' },
+const statusConfig: Record<string, { className: string, label: string }> = {
+  forwarded: { className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20', label: 'Allowed' },
+  blocked:   { className: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20', label: 'Blocked' },
+  custom:    { className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20', label: 'Custom' },
+  cached:    { className: 'bg-primary/10 text-primary border border-primary/20', label: 'Cached' },
 }
 
 const clientIcons: Record<string, React.ElementType> = {
-  '192.168.1.45': Laptop,
+  '192.168.1.45':  Laptop,
   '192.168.1.102': Smartphone,
-  '192.168.1.1': Router,
-  '192.168.1.12': Monitor,
-  '10.0.4.19': Cloud,
+  '192.168.1.1':   Router,
+  '192.168.1.12':  Monitor,
+  '10.0.4.19':     Cloud,
 }
 
 function getClientIcon(ip: string): React.ElementType {
@@ -73,11 +65,9 @@ export default function LogTable({ compact }: Props) {
         return l.action === 'forwarded' || l.action === 'cached' || l.action === 'custom'
       })
 
-  const showFilters = !compact
-
   return (
     <Card className="overflow-hidden shadow-sm border-border/50">
-      {showFilters && (
+      {!compact && (
         <CardHeader className="pb-4 border-b border-border/50 bg-muted/5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle className="text-lg font-bold tracking-tight text-foreground">Query Logs</CardTitle>
@@ -99,7 +89,7 @@ export default function LogTable({ compact }: Props) {
       )}
       {compact && (
         <CardHeader className="pb-4 border-b border-border/50 flex flex-row items-center justify-between bg-muted/5">
-          <CardTitle className="text-lg font-bold tracking-tight text-foreground">Recent Queries</CardTitle>
+          <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Recent Queries</CardTitle>
           <Button variant="link" size="sm" className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary">View All</Button>
         </CardHeader>
       )}
@@ -126,7 +116,7 @@ export default function LogTable({ compact }: Props) {
                 const config = statusConfig[l.action || 'forwarded'] || statusConfig.forwarded
                 const ClientIcon = getClientIcon(l.client_ip || '')
                 return (
-                  <TableRow key={l.id} className="group transition-all duration-200 hover:bg-muted/50 hover:shadow-sm">
+                  <TableRow key={l.id} className="group transition-all duration-200 hover:bg-muted/50">
                     <TableCell className="font-mono text-[10px] text-muted-foreground/80">
                       {compact
                         ? new Date(l.timestamp || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -152,14 +142,14 @@ export default function LogTable({ compact }: Props) {
                       </div>
                     </TableCell>
                     {!compact && (
-                      <TableCell className="text-[10px] font-bold text-muted-foreground uppercase">
+                      <TableCell className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                         {l.action === 'forwarded' ? 'A (IPv4)' : l.action === 'blocked' ? 'HTTPS' : l.action === 'cached' ? 'A (IPv4)' : 'TXT'}
                       </TableCell>
                     )}
                     <TableCell className="text-right">
-                      <Badge variant={config.variant} className="uppercase text-[9px] font-bold px-2 py-0 border-none">
+                      <span className={`inline-flex items-center rounded-full uppercase text-[9px] font-bold px-2 py-0.5 tracking-wider ${config.className}`}>
                         {config.label}
-                      </Badge>
+                      </span>
                     </TableCell>
                   </TableRow>
                 )
@@ -169,7 +159,7 @@ export default function LogTable({ compact }: Props) {
         </Table>
       </div>
       {!compact && (
-        <div className="p-4 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/10">
+        <div className="p-4 border-t border-border/50 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
             Showing <span className="text-foreground">1-{Math.min(filteredLogs.length, 50)}</span> of <span className="text-foreground">{filteredLogs.length}</span> queries
           </div>
@@ -189,4 +179,3 @@ export default function LogTable({ compact }: Props) {
     </Card>
   )
 }
-

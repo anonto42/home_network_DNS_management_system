@@ -16,10 +16,10 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main 
+        <main
           className={cn(
             "flex-1 transition-all duration-300 pt-16 min-h-screen",
-            isSidebarCollapsed ? "md:ml-20" : "md:ml-[280px]"
+            isSidebarCollapsed ? "md:ml-[72px]" : "md:ml-64"
           )}
         >
           <div className="container mx-auto p-4 md:p-8 max-w-[1440px]">
@@ -30,4 +30,3 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
     </div>
   );
 };
-
