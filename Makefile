@@ -57,7 +57,7 @@ build-prod: ## Build single binary with embedded frontend
 .PHONY: generate
 generate: ## Generate TypeScript types from Go API (swag → openapi → api-types.ts)
 	@echo "$(YELLOW)Generating Swagger docs...$(RESET)"
-	cd $(BACKEND) && $(shell go env GOPATH)/bin/swag init \
+	cd $(BACKEND) && go run github.com/swaggo/swag/cmd/swag@latest init \
 		-g cmd/dns-server/main.go -o ./docs --parseInternal
 	@echo "$(YELLOW)Converting to OpenAPI 3...$(RESET)"
 	cd $(BACKEND)/docs && npx -y swagger2openapi swagger.json --outfile openapi.json
@@ -76,11 +76,15 @@ test-backend: ## Run Go tests
 
 # ── Linting ────────────────────────────────────────────────────────────────────
 .PHONY: lint
-lint: lint-backend ## Run all linters
+lint: lint-backend lint-frontend ## Run all linters
 
 .PHONY: lint-backend
 lint-backend: ## Run golangci-lint
 	cd $(BACKEND) && golangci-lint run ./...
+
+.PHONY: lint-frontend
+lint-frontend: ## Run TypeScript/React lint
+	cd $(FRONTEND) && npx tsc --noEmit
 
 # ── Docker ─────────────────────────────────────────────────────────────────────
 .PHONY: docker-up
@@ -92,8 +96,9 @@ docker-up-dev: ## Start dev stack with hot-reload volumes
 	docker compose -f docker/docker-compose.dev.yml up --build
 
 .PHONY: docker-down
-docker-down: ## Stop all containers
+docker-down: ## Stop all containers (prod + dev)
 	docker compose -f docker/docker-compose.yml down
+	docker compose -f docker/docker-compose.dev.yml down 2>/dev/null || true
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 .PHONY: setup
