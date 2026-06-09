@@ -1,91 +1,177 @@
-import { useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
+import { 
+  Calendar, 
+  Download,
+  BarChart3,
+  ExternalLink
+} from 'lucide-react'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { StatsCards } from './features/stats'
 import { SystemHealth } from './features/stats/components/SystemHealth'
 import { LogTable } from './features/logs'
 import { RecordManager } from './features/records'
 import { BlocklistManager } from './features/blocklist'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
-type Tab = 'dashboard' | 'logs' | 'records' | 'blocklist' | 'steering'
+const Dashboard = () => (
+  <div className="space-y-8">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Network Overview</h2>
+        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Real-time monitoring for north-america-east-1 cluster.</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="gap-2 text-[10px] font-bold uppercase tracking-widest border-border/50 shadow-sm">
+          <Calendar className="h-3.5 w-3.5" />
+          Last 24 Hours
+        </Button>
+        <Button size="sm" className="gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest">
+          <Download className="h-3.5 w-3.5" />
+          Export Report
+        </Button>
+      </div>
+    </div>
+    
+    <StatsCards />
+
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-8">
+        <LogTable compact />
+      </div>
+      <div className="lg:col-span-4 space-y-8">
+        <SystemHealth />
+        <Card className="bg-slate-900 text-white overflow-hidden relative group border-none shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Network Load
+            </CardTitle>
+            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Traffic distribution across nodes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-1.5 h-24 mt-2">
+              {[40, 60, 80, 50, 90, 70, 85].map((h, i) => (
+                <div 
+                  key={i} 
+                  className={`flex-1 rounded-t-sm transition-all duration-500 ${i === 6 ? 'bg-primary' : 'bg-white/10'}`}
+                  style={{ height: `${h}%` }}
+                ></div>
+              ))}
+            </div>
+            <div className="absolute inset-0 opacity-5 pointer-events-none -bottom-10">
+              <svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
+                <path d="M0 100 Q 25 0 50 100 Q 75 0 100 100" fill="none" stroke="currentColor" strokeWidth="2"></path>
+              </svg>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+)
+
+const LogsPage = () => (
+  <div className="space-y-6">
+    <div className="space-y-1">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">Query Log</h1>
+      <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Real-time DNS traffic and security events across your organization.</p>
+    </div>
+    <LogTable />
+  </div>
+)
+
+const SteeringPage = () => (
+  <Card className="flex items-center justify-center h-64 border-dashed border-border/50 bg-muted/5 shadow-sm">
+    <div className="text-center space-y-2">
+      <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Traffic Steering — Coming soon</p>
+      <Button variant="link" className="gap-2 text-[10px] font-bold uppercase tracking-widest text-primary">
+        Learn more <ExternalLink className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  </Card>
+)
+
+const SettingsPage = () => (
+  <div className="max-w-4xl space-y-8">
+    <div className="space-y-1">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+      <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Configure your DNS server and security preferences.</p>
+    </div>
+
+    <div className="grid gap-6">
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle className="font-bold tracking-tight">General Configuration</CardTitle>
+          <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Basic node settings and updates.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-bold text-foreground">Server Name</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identify this node in your cluster</p>
+            </div>
+            <input 
+              className="flex h-9 w-full sm:w-64 rounded-md border border-border/50 bg-muted/5 px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 font-medium" 
+              defaultValue="north-america-east-1" 
+            />
+          </div>
+          <div className="h-[1px] bg-border/50"></div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-bold text-foreground">Automatic Updates</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Keep blocklists and firmware up to date</p>
+            </div>
+            <div className="flex items-center h-6">
+              <div className="h-5 w-10 rounded-full bg-primary relative cursor-pointer transition-colors shadow-inner">
+                <div className="absolute right-1 top-1 h-3 w-3 rounded-full bg-white shadow-sm"></div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle className="font-bold tracking-tight">Upstream DNS</CardTitle>
+          <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Select your preferred upstream DNS providers for resolution.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {['Cloudflare (1.1.1.1)', 'Google (8.8.8.8)', 'Quad9 (9.9.9.9)', 'Custom Provider'].map((p, i) => (
+              <div key={p} className="flex items-center space-x-3 p-3 border border-border/50 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer group">
+                <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${i === 0 ? 'bg-primary border-primary text-white shadow-sm' : 'border-border/50 group-hover:border-primary/50'}`}>
+                  {i === 0 && <div className="h-1.5 w-1.5 bg-white rounded-full"></div>}
+                </div>
+                <span className="text-sm font-bold text-foreground opacity-80 group-hover:opacity-100">{p}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border/50">Discard Changes</Button>
+        <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest">Save Configuration</Button>
+      </div>
+    </div>
+  </div>
+)
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('dashboard')
-
   return (
-    <DashboardLayout activeTab={tab} setTab={(t) => setTab(t as Tab)}>
-      {tab === 'dashboard' && (
-        <>
-          <div className="flex justify-between items-end mb-xl">
-            <div>
-              <h2 className="font-headline-lg text-headline-lg text-on-surface">Network Overview</h2>
-              <p className="font-body-md text-body-md text-on-surface-variant">Real-time monitoring for north-america-east-1 cluster.</p>
-            </div>
-            <div className="flex gap-sm">
-              <button className="flex items-center gap-sm px-md py-sm border border-outline text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container transition-colors">
-                <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                Last 24 Hours
-              </button>
-              <button className="flex items-center gap-sm px-md py-sm bg-primary text-on-primary font-label-md text-label-md rounded-lg hover:opacity-90 shadow-sm transition-opacity">
-                <span className="material-symbols-outlined text-[18px]">download</span>
-                Export Report
-              </button>
-            </div>
-          </div>
-          <StatsCards />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-            <div className="lg:col-span-2">
-              <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
-                <div className="p-lg border-b border-outline-variant flex justify-between items-center">
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">Recent Queries</h3>
-                  <button className="text-primary font-label-md text-label-md hover:underline">View All</button>
-                </div>
-                <LogTable compact />
-              </div>
-            </div>
-            <div className="space-y-lg">
-              <SystemHealth />
-              <div className="bg-primary text-on-primary p-lg rounded-xl border border-primary-container shadow-lg relative overflow-hidden group">
-                <div className="relative z-10">
-                  <h3 className="font-headline-sm text-headline-sm mb-xs">Network Load</h3>
-                  <p className="font-body-sm text-body-sm text-primary-fixed mb-lg">Traffic distribution across nodes</p>
-                  <div className="flex items-end gap-xs h-24">
-                    <div className="flex-1 bg-primary-fixed/30 rounded-t-sm h-[40%] group-hover:h-[50%] transition-all"></div>
-                    <div className="flex-1 bg-primary-fixed/30 rounded-t-sm h-[60%] group-hover:h-[45%] transition-all"></div>
-                    <div className="flex-1 bg-primary-fixed/30 rounded-t-sm h-[80%] group-hover:h-[70%] transition-all"></div>
-                    <div className="flex-1 bg-primary-fixed/30 rounded-t-sm h-[50%] group-hover:h-[85%] transition-all"></div>
-                    <div className="flex-1 bg-primary-fixed/30 rounded-t-sm h-[90%] group-hover:h-[60%] transition-all"></div>
-                    <div className="flex-1 bg-primary-fixed/30 rounded-t-sm h-[70%] group-hover:h-[90%] transition-all"></div>
-                    <div className="flex-1 bg-white rounded-t-sm h-[85%] group-hover:h-[75%] transition-all"></div>
-                  </div>
-                </div>
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                  <svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
-                    <path d="M0 100 Q 25 0 50 100 Q 75 0 100 100" fill="none" stroke="white" strokeWidth="2"></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-      {tab === 'logs' && (
-        <>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-lg mb-lg">
-            <div>
-              <h1 className="font-headline-md text-headline-md text-on-surface">Query Log</h1>
-              <p className="font-body-sm text-on-surface-variant">Real-time DNS traffic and security events across your organization.</p>
-            </div>
-          </div>
-          <LogTable />
-        </>
-      )}
-      {tab === 'records' && <RecordManager />}
-      {tab === 'blocklist' && <BlocklistManager />}
-      {tab === 'steering' && (
-        <div className="flex items-center justify-center h-64 text-on-surface-variant">
-          <p className="font-body-lg">Traffic Steering — Coming soon</p>
-        </div>
-      )}
+    <DashboardLayout>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/logs" element={<LogsPage />} />
+        <Route path="/records" element={<RecordManager />} />
+        <Route path="/blocklist" element={<BlocklistManager />} />
+        <Route path="/steering" element={<SteeringPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<Dashboard />} />
+      </Routes>
     </DashboardLayout>
   )
 }
+

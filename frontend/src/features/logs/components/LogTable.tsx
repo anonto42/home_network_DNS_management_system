@@ -1,24 +1,52 @@
 import { useState } from 'react'
-import { getLogs, clearLogs, type QueryLog } from '../api'
+import { 
+  Laptop, 
+  Smartphone, 
+  Router, 
+  Monitor, 
+  Cloud, 
+  Copy, 
+  ChevronLeft, 
+  ChevronRight,
+  MoreHorizontal
+} from 'lucide-react'
+import { getLogs, type QueryLog } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-const statusConfig: Record<string, { badge: string, dot: string, label: string }> = {
-  forwarded: { badge: 'bg-secondary-container/30 text-secondary', dot: 'bg-secondary', label: 'Allowed' },
-  blocked: { badge: 'bg-error-container/30 text-error', dot: 'bg-error', label: 'Blocked' },
-  custom: { badge: 'bg-tertiary-fixed/40 text-tertiary', dot: 'bg-tertiary', label: 'Custom' },
-  cached: { badge: 'bg-secondary-container/30 text-secondary', dot: 'bg-secondary', label: 'Cached' },
+const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline', label: string }> = {
+  forwarded: { variant: 'secondary', label: 'Allowed' },
+  blocked: { variant: 'destructive', label: 'Blocked' },
+  custom: { variant: 'outline', label: 'Custom' },
+  cached: { variant: 'default', label: 'Cached' },
 }
 
-const clientIcons: Record<string, string> = {
-  '192.168.1.45': 'laptop_mac',
-  '192.168.1.102': 'smartphone',
-  '192.168.1.1': 'router',
-  '192.168.1.12': 'desktop_windows',
-  '10.0.4.19': 'cloud',
+const clientIcons: Record<string, React.ElementType> = {
+  '192.168.1.45': Laptop,
+  '192.168.1.102': Smartphone,
+  '192.168.1.1': Router,
+  '192.168.1.12': Monitor,
+  '10.0.4.19': Cloud,
 }
 
-function getClientIcon(ip: string): string {
-  return clientIcons[ip] || 'laptop_mac'
+function getClientIcon(ip: string): React.ElementType {
+  return clientIcons[ip] || Laptop
 }
 
 interface Props {
@@ -32,8 +60,10 @@ export default function LogTable({ compact }: Props) {
   usePolling(async () => {
     try {
       const data = await getLogs()
-      setLogs(data || [])
-    } catch {}
+      if (data) setLogs(data)
+    } catch (error) {
+      console.error('Failed to fetch logs:', error)
+    }
   }, 3000)
 
   const filteredLogs = filter === 'all'
@@ -46,111 +76,117 @@ export default function LogTable({ compact }: Props) {
   const showFilters = !compact
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+    <Card className="overflow-hidden shadow-sm border-border/50">
       {showFilters && (
-        <div className="p-lg border-b border-outline-variant">
-          <div className="inline-flex bg-surface-container-low p-base rounded-lg border border-outline-variant">
-            {(['all', 'blocked', 'allowed'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-lg py-sm rounded-md font-label-md transition-all duration-200 ${
-                  filter === f
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                {f === 'all' ? 'All' : f === 'blocked' ? 'Blocked' : 'Allowed'}
-              </button>
-            ))}
+        <CardHeader className="pb-4 border-b border-border/50 bg-muted/5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <CardTitle className="text-lg font-bold tracking-tight text-foreground">Query Logs</CardTitle>
+            <div className="flex bg-muted/50 p-1 rounded-lg w-fit border border-border/30">
+              {(['all', 'blocked', 'allowed'] as const).map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setFilter(f)}
+                  className={`px-4 h-7 text-[10px] font-bold uppercase tracking-wider ${filter === f ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  {f}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
+        </CardHeader>
       )}
-      <div className="overflow-x-auto">
-        {compact && (
-          <div className="p-lg border-b border-outline-variant flex justify-between items-center">
-            <h3 className="font-headline-sm text-headline-sm text-on-surface">Recent Queries</h3>
-            <button className="text-primary font-label-md text-label-md hover:underline">View All</button>
-          </div>
-        )}
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-surface-container-low border-b border-outline-variant">
-              <th className="py-md px-lg font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Timestamp</th>
-              {!compact && <th className="py-md px-lg font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Client</th>}
-              <th className="py-md px-lg font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Domain</th>
-              {!compact && <th className="py-md px-lg font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Result</th>}
-              <th className="py-md px-lg font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant">
+      {compact && (
+        <CardHeader className="pb-4 border-b border-border/50 flex flex-row items-center justify-between bg-muted/5">
+          <CardTitle className="text-lg font-bold tracking-tight text-foreground">Recent Queries</CardTitle>
+          <Button variant="link" size="sm" className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary">View All</Button>
+        </CardHeader>
+      )}
+      <div className="overflow-x-auto p-4">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/20 border-b border-border/50">
+              <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Timestamp</TableHead>
+              {!compact && <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Client</TableHead>}
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Domain</TableHead>
+              {!compact && <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</TableHead>}
+              <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(!filteredLogs || filteredLogs.length === 0) ? (
-              <tr>
-                <td colSpan={compact ? 3 : 5} className="py-xl px-lg text-center text-on-surface-variant font-body-md">
+              <TableRow>
+                <TableCell colSpan={compact ? 3 : 5} className="h-24 text-center text-muted-foreground text-sm font-medium">
                   No queries yet. Make a DNS request to see it here.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               filteredLogs.slice(0, compact ? 5 : undefined).map((l) => {
                 const config = statusConfig[l.action || 'forwarded'] || statusConfig.forwarded
+                const ClientIcon = getClientIcon(l.client_ip || '')
                 return (
-                  <tr key={l.id} className="dns-table-row hover:bg-surface-container transition-colors group">
-                    <td className="py-md px-lg font-code text-code text-on-surface-variant">
+                  <TableRow key={l.id} className="group transition-all duration-200 hover:bg-muted/50 hover:shadow-sm">
+                    <TableCell className="font-mono text-[10px] text-muted-foreground/80">
                       {compact
-                        ? new Date(l.timestamp || '').toLocaleTimeString()
-                        : new Date(l.timestamp || '').toISOString().replace('T', ' ').slice(0, 19)
+                        ? new Date(l.timestamp || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                        : new Date(l.timestamp || '').toLocaleString()
                       }
-                    </td>
+                    </TableCell>
                     {!compact && (
-                      <td className="py-md px-lg">
-                        <div className="flex items-center gap-sm">
-                          <span className="material-symbols-outlined text-[18px] text-primary">{getClientIcon(l.client_ip || '')}</span>
-                          <span className="font-body-sm font-semibold text-on-surface">{l.client_ip}</span>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <ClientIcon className="h-3.5 w-3.5 text-primary opacity-80" />
+                          <span className="text-xs font-bold text-foreground">{l.client_ip}</span>
                         </div>
-                      </td>
+                      </TableCell>
                     )}
-                    <td className="py-md px-lg">
-                      <div className="flex items-center justify-between">
-                        <span className={`font-code text-code ${l.action === 'blocked' ? 'text-error' : 'text-primary'}`}>{l.domain}</span>
-                        <button className="copy-action opacity-0 material-symbols-outlined text-[16px] text-outline hover:text-primary transition-all p-xs rounded hover:bg-surface-container-high cursor-pointer">content_copy</button>
+                    <TableCell>
+                      <div className="flex items-center justify-between group/cell">
+                        <span className={`font-mono text-xs truncate max-w-[120px] sm:max-w-[200px] font-medium ${l.action === 'blocked' ? 'text-destructive' : 'text-primary'}`}>
+                          {l.domain}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                          <Copy className="h-3 w-3 text-muted-foreground" />
+                        </Button>
                       </div>
-                    </td>
+                    </TableCell>
                     {!compact && (
-                      <td className="py-md px-lg font-body-sm text-body-sm text-on-surface">
+                      <TableCell className="text-[10px] font-bold text-muted-foreground uppercase">
                         {l.action === 'forwarded' ? 'A (IPv4)' : l.action === 'blocked' ? 'HTTPS' : l.action === 'cached' ? 'A (IPv4)' : 'TXT'}
-                      </td>
+                      </TableCell>
                     )}
-                    <td className="py-md px-lg text-right">
-                      <span className={`inline-flex items-center px-sm py-xs rounded-full font-label-sm text-label-sm uppercase ${config.badge}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${config.dot} mr-2`}></span>
+                    <TableCell className="text-right">
+                      <Badge variant={config.variant} className="uppercase text-[9px] font-bold px-2 py-0 border-none">
                         {config.label}
-                      </span>
-                    </td>
-                  </tr>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
                 )
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {!compact && (
-        <div className="px-lg py-md border-t border-outline-variant flex items-center justify-between bg-surface-container-low">
-          <div className="font-body-sm text-body-sm text-on-surface-variant">
-            Showing <span className="font-semibold">1-{Math.min(filteredLogs.length, 50)}</span> of <span className="font-semibold">{filteredLogs.length}</span> queries
+        <div className="p-4 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/10">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Showing <span className="text-foreground">1-{Math.min(filteredLogs.length, 50)}</span> of <span className="text-foreground">{filteredLogs.length}</span> queries
           </div>
-          <div className="flex items-center gap-sm">
-            <button className="p-xs rounded border border-outline-variant hover:bg-surface-container-lowest transition-colors disabled:opacity-50" disabled>
-              <span className="material-symbols-outlined">chevron_left</span>
-            </button>
-            <button className="px-md py-xs rounded border border-outline-variant bg-primary text-on-primary font-label-sm">1</button>
-            <button className="px-md py-xs rounded border border-outline-variant hover:bg-surface-container-lowest transition-colors font-label-sm">2</button>
-            <button className="px-md py-xs rounded border border-outline-variant hover:bg-surface-container-lowest transition-colors font-label-sm">3</button>
-            <button className="p-xs rounded border border-outline-variant hover:bg-surface-container-lowest transition-colors">
-              <span className="material-symbols-outlined">chevron_right</span>
-            </button>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50" disabled>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" className="h-7 px-3 text-[10px] font-bold rounded-md">1</Button>
+            <Button variant="ghost" size="sm" className="h-7 px-3 text-[10px] font-bold text-muted-foreground hover:text-foreground">2</Button>
+            <Button variant="ghost" size="sm" className="h-7 px-3 text-[10px] font-bold text-muted-foreground hover:text-foreground">3</Button>
+            <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
+

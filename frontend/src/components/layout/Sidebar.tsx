@@ -1,55 +1,135 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Server, 
+  Route as RouteIcon, 
+  Shield, 
+  ListTodo, 
+  Plus, 
+  Settings, 
+  HelpCircle,
+  PanelLeftClose,
+  PanelLeftOpen
+} from 'lucide-react';
+import { useLayout } from '../../hooks/useLayout';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-export const Sidebar: React.FC<{ activeTab: string, setTab: (tab: string) => void }> = ({ activeTab, setTab }) => {
+const Logo = ({ collapsed }: { collapsed: boolean }) => (
+  <div className={cn(
+    "flex items-center transition-all duration-300",
+    collapsed ? "justify-center" : "gap-3 overflow-hidden whitespace-nowrap"
+  )}>
+    <div className="w-9 h-9 bg-primary flex-shrink-0 flex items-center justify-center rounded-lg shadow-sm">
+      <Shield size={20} className="text-primary-foreground" />
+    </div>
+    {!collapsed && (
+      <div className="flex flex-col">
+        <h1 className="text-base font-bold leading-tight tracking-tight">NetShield</h1>
+        <p className="text-[10px] text-muted-foreground font-semibold tracking-widest uppercase opacity-70">Enterprise</p>
+      </div>
+    )}
+  </div>
+);
+
+export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
   const navItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { key: 'records', label: 'DNS Records', icon: 'dns' },
-    { key: 'steering', label: 'Traffic Steering', icon: 'alt_route' },
-    { key: 'blocklist', label: 'Security', icon: 'shield' },
-    { key: 'logs', label: 'Activity Logs', icon: 'list_alt' },
+    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/records', label: 'DNS Records', icon: Server },
+    { path: '/steering', label: 'Traffic Steering', icon: RouteIcon },
+    { path: '/blocklist', label: 'Security', icon: Shield },
+    { path: '/logs', label: 'Activity Logs', icon: ListTodo },
   ];
 
   return (
-    <aside className="w-[280px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col p-md z-50">
-      <div className="mb-xl flex items-center gap-md">
-        <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-on-primary-container">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
-        </div>
-        <div>
-          <h1 className="font-headline-sm text-headline-sm font-bold text-primary">NetShield DNS</h1>
-          <p className="font-label-sm text-label-sm text-on-surface-variant">Enterprise Console</p>
-        </div>
+    <div className="flex flex-col h-full py-4">
+      <div className="px-4 mb-8">
+        <Logo collapsed={collapsed} />
       </div>
-      <nav className="flex-1 space-y-sm">
+
+      <nav className="flex-1 space-y-1 px-2">
         {navItems.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => setTab(item.key)}
-            className={`w-full flex items-center gap-md p-md rounded-lg transition-colors duration-200 cursor-pointer active:scale-95 ${
-              activeTab === item.key
-                ? 'bg-primary-container text-on-primary-container font-semibold'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-            }`}
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) => cn(
+              "flex items-center rounded-md transition-all duration-200 group p-2 mx-1",
+              collapsed ? "justify-center" : "gap-3 px-3",
+              isActive 
+                ? "bg-primary text-primary-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+            title={collapsed ? item.label : ''}
           >
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: activeTab === item.key ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
-            <span className="font-body-md text-body-md">{item.label}</span>
-          </button>
+            <item.icon className={cn("h-5 w-5 shrink-0", !collapsed && "group-hover:scale-110 transition-transform")} />
+            {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+          </NavLink>
         ))}
       </nav>
-      <button className="mb-xl w-full bg-primary text-on-primary font-label-md text-label-md py-md rounded-lg flex items-center justify-center gap-sm shadow-sm hover:opacity-90 active:scale-95 transition-all">
-        <span className="material-symbols-outlined">add</span>
-        Add New Zone
-      </button>
-      <div className="mt-auto space-y-sm">
-        <a className="flex items-center gap-md p-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200 cursor-pointer rounded-lg" href="#">
-          <span className="material-symbols-outlined">settings</span>
-          <span className="font-body-md text-body-md">Settings</span>
-        </a>
-        <a className="flex items-center gap-md p-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-200 cursor-pointer rounded-lg" href="#">
-          <span className="material-symbols-outlined">help_outline</span>
-          <span className="font-body-md text-body-md">Support</span>
+
+      <div className="px-3 mt-auto space-y-1">
+        <Button 
+          className={cn(
+            "w-full rounded-md flex items-center transition-all h-10 mb-2",
+            collapsed ? "justify-center p-0" : "gap-2 justify-start px-3"
+          )}
+        >
+          <Plus className="h-4 w-4" />
+          {!collapsed && <span className="font-semibold text-xs">Add New Zone</span>}
+        </Button>
+        
+        <NavLink 
+          to="/settings" 
+          className={({ isActive }) => cn(
+            "flex items-center transition-all duration-200 rounded-md p-2 mx-1",
+            collapsed ? "justify-center" : "gap-3 px-3",
+            isActive ? "bg-muted text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+          title={collapsed ? "Settings" : ""}
+        >
+          <Settings className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Settings</span>}
+        </NavLink>
+
+        <a 
+          href="#"
+          className={cn(
+            "flex items-center transition-all duration-200 rounded-md p-2 mx-1 text-muted-foreground hover:text-foreground hover:bg-muted",
+            collapsed ? "justify-center" : "gap-3 px-3"
+          )}
+          title={collapsed ? "Help & Support" : ""}
+        >
+          <HelpCircle className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Support</span>}
         </a>
       </div>
+    </div>
+  );
+};
+
+export const Sidebar: React.FC = () => {
+  const { isSidebarCollapsed, toggleSidebar } = useLayout();
+
+  return (
+    <aside 
+      className={cn(
+        "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-background border-r border-border/50 transition-all duration-300 z-50 shadow-sm",
+        isSidebarCollapsed ? "w-20" : "w-[280px]"
+      )}
+    >
+      <div className="absolute -right-3 top-20 z-50">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={toggleSidebar}
+          className="h-6 w-6 rounded-full shadow-sm bg-background border-border/50 hover:bg-muted"
+        >
+          {isSidebarCollapsed ? <PanelLeftOpen className="h-3 w-3" /> : <PanelLeftClose className="h-3 w-3" />}
+        </Button>
+      </div>
+      <SidebarContent collapsed={isSidebarCollapsed} />
     </aside>
   );
 };
+

@@ -1,19 +1,52 @@
 import { useState } from 'react'
+import { 
+  Activity, 
+  Ban, 
+  Percent, 
+  List,
+  ArrowUpRight,
+  ArrowDownRight
+} from 'lucide-react'
 import { getStatus, type Status } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
+import { Card, CardContent } from '@/components/ui/card'
 
-export const StatCard: React.FC<{ label: string, value: string | number, icon: string, iconBg: string, iconColor: string, trend?: string, trendBg?: string, trendColor?: string }> = ({ label, value, icon, iconBg, iconColor, trend, trendBg = 'bg-secondary-container', trendColor = 'text-secondary' }) => (
-  <div className="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant hover:shadow-lg transition-shadow duration-300">
-    <div className="flex justify-between items-start mb-md">
-      <div className={`p-sm ${iconBg} ${iconColor} rounded-lg`}>
-        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-      </div>
-      {trend && <span className={`${trendColor} font-label-sm text-label-sm ${trendBg} px-sm py-xs rounded-full`}>{trend}</span>}
-    </div>
-    <h3 className="font-label-md text-label-md text-on-surface-variant mb-xs">{label}</h3>
-    <p className="font-headline-md text-headline-md text-on-surface">{value}</p>
-  </div>
-);
+interface StatCardProps {
+  label: string
+  value: string | number
+  icon: React.ElementType
+  trend?: string
+  trendType?: 'up' | 'down' | 'neutral'
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, trend, trendType = 'neutral' }) => {
+  const trendColor = trendType === 'up' ? 'text-green-600 bg-green-50' : trendType === 'down' ? 'text-red-600 bg-red-50' : 'text-muted-foreground bg-muted/50'
+  const TrendIcon = trendType === 'up' ? ArrowUpRight : trendType === 'down' ? ArrowDownRight : null
+
+  return (
+    <Card className="overflow-hidden shadow-sm border-border/50">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between space-x-4">
+          <div className="flex items-center space-x-4">
+            <div className="p-2 bg-primary/5 text-primary rounded-lg border border-primary/10">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</p>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">{value}</h3>
+            </div>
+          </div>
+          {trend && (
+            <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${trendColor} border border-current/10`}>
+              {TrendIcon && <TrendIcon className="h-3 w-3" />}
+              {trend}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function StatsCards() {
   const [stats, setStats] = useState<Status>({
@@ -29,8 +62,11 @@ export default function StatsCards() {
 
   usePolling(async () => {
     try {
-      setStats(await getStatus())
-    } catch {}
+      const data = await getStatus()
+      if (data) setStats(data)
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+    }
   }, 3000)
 
   const qf = stats.queries_forwarded ?? 0
@@ -40,11 +76,36 @@ export default function StatsCards() {
   const percentBlocked = total > 0 ? Math.round((qb / total) * 100) : 0
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg mb-xl">
-      <StatCard label="Total Queries" value={qf.toLocaleString()} icon="query_stats" iconBg="bg-primary-fixed" iconColor="text-primary" trend="+12%" />
-      <StatCard label="Queries Blocked" value={qb.toLocaleString()} icon="block" iconBg="bg-error-container" iconColor="text-error" trend="+4.2%" trendBg="bg-error-container" trendColor="text-error" />
-      <StatCard label="Percent Blocked" value={`${percentBlocked}%`} icon="percent" iconBg="bg-secondary-fixed" iconColor="text-secondary" trend="Stable" trendBg="bg-surface-container" trendColor="text-on-surface-variant" />
-      <StatCard label="Domains on Adlist" value={cs.toLocaleString()} icon="list" iconBg="bg-tertiary-fixed" iconColor="text-tertiary" trend="Updated 2h ago" trendBg="bg-surface-container" trendColor="text-on-surface-variant" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <StatCard 
+        label="Total Queries" 
+        value={qf.toLocaleString()} 
+        icon={Activity} 
+        trend="+12%" 
+        trendType="up"
+      />
+      <StatCard 
+        label="Queries Blocked" 
+        value={qb.toLocaleString()} 
+        icon={Ban} 
+        trend="+4.2%" 
+        trendType="up"
+      />
+      <StatCard 
+        label="Percent Blocked" 
+        value={`${percentBlocked}%`} 
+        icon={Percent} 
+        trend="Stable" 
+        trendType="neutral"
+      />
+      <StatCard 
+        label="Domains on Adlist" 
+        value={cs.toLocaleString()} 
+        icon={List} 
+        trend="Updated 2h ago" 
+        trendType="neutral"
+      />
     </div>
   )
 }
+
