@@ -69,19 +69,21 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Network Load chart uses last 7 query counts sampled from stats polling
+const CHART_POINTS = 20
+
 function NetworkLoadChart() {
-  const [samples, setSamples] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
+  const [samples, setSamples] = useState<number[]>(Array(CHART_POINTS).fill(0))
+  const [labels, setLabels] = useState<string[]>(Array(CHART_POINTS).fill(''))
   const [loading, setLoading] = useState(true)
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; value: number; label: string } | null>(null)
 
   const fetch = useCallback(async () => {
     try {
       const s = await getStatus()
       const total = (s.queries_forwarded ?? 0) + (s.queries_blocked ?? 0) + (s.queries_cached ?? 0)
-      setSamples(prev => {
-        const next = [...prev.slice(1), total]
-        return next
-      })
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+      setSamples(prev => [...prev.slice(1), total])
+      setLabels(prev => [...prev.slice(1), now])
       setLoading(false)
     } catch {
       setLoading(false)
@@ -90,41 +92,133 @@ function NetworkLoadChart() {
 
   usePolling(fetch, 3000)
 
+  const W = 400
+  const H = 120
+  const PAD = { top: 12, right: 8, bottom: 28, left: 36 }
+  const cW = W - PAD.left - PAD.right
+  const cH = H - PAD.top - PAD.bottom
+
   const max = Math.max(...samples, 1)
-  const bars = samples.map(v => Math.round((v / max) * 100))
+  const points = samples.map((v, i) => ({
+    x: PAD.left + (i / (CHART_POINTS - 1)) * cW,
+    y: PAD.top + cH - (v / max) * cH,
+    v,
+  }))
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+  const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${(PAD.top + cH).toFixed(1)} L${PAD.left},${(PAD.top + cH).toFixed(1)} Z`
+
+  const yTicks = [0, Math.round(max / 2), max]
+  const xLabelIndices = [0, Math.floor(CHART_POINTS / 2), CHART_POINTS - 1]
 
   return (
-    <Card className="overflow-hidden relative group shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight text-foreground">
-          <BarChart3 className="h-5 w-5 text-primary" />
-          Network Load
-        </CardTitle>
-        <CardDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Live query rate</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-end gap-1.5 h-24 mt-2">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="flex-1 rounded-t-sm" style={{ height: `${30 + i * 7}%` }} />
-            ))}
+    <Card className="overflow-hidden shadow-sm">
+      <CardHeader className="pb-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight text-foreground">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Network Load
+            </CardTitle>
+            <CardDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-0.5">
+              Live query rate · updates every 3s
+            </CardDescription>
           </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-foreground">{samples[samples.length - 1].toLocaleString()}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Queries</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 pb-2 px-4">
+        {loading ? (
+          <Skeleton className="w-full h-[120px]" />
         ) : (
-          <div className="flex items-end gap-1.5 h-24 mt-2">
-            {bars.map((h, i) => (
-              <div
-                key={i}
-                className={`flex-1 rounded-t-sm transition-all duration-700 ease-out ${i === bars.length - 1 ? 'bg-primary' : 'bg-foreground/10'}`}
-                style={{ height: `${Math.max(4, h)}%` }}
+          <div className="relative" onMouseLeave={() => setTooltip(null)}>
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              className="w-full"
+              style={{ height: 120 }}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+
+              {/* Y grid lines */}
+              {yTicks.map((t, i) => {
+                const y = PAD.top + cH - (t / max) * cH
+                return (
+                  <g key={i}>
+                    <line x1={PAD.left} y1={y} x2={PAD.left + cW} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
+                    <text x={PAD.left - 4} y={y + 3} textAnchor="end" fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">{t}</text>
+                  </g>
+                )
+              })}
+
+              {/* X axis labels */}
+              {xLabelIndices.map(idx => (
+                <text key={idx} x={points[idx].x} y={H - 4} textAnchor="middle" fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">
+                  {labels[idx]}
+                </text>
+              ))}
+
+              {/* Area fill */}
+              <path d={areaPath} fill="url(#areaGrad)" />
+
+              {/* Line */}
+              <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+
+              {/* Latest point dot */}
+              <circle
+                cx={points[points.length - 1].x}
+                cy={points[points.length - 1].y}
+                r="3"
+                fill="hsl(var(--primary))"
               />
-            ))}
+
+              {/* Hover areas */}
+              {points.map((p, i) => (
+                <rect
+                  key={i}
+                  x={p.x - cW / CHART_POINTS / 2}
+                  y={PAD.top}
+                  width={cW / CHART_POINTS}
+                  height={cH}
+                  fill="transparent"
+                  onMouseEnter={() => setTooltip({ x: p.x, y: p.y, value: p.v, label: labels[i] })}
+                />
+              ))}
+
+              {/* Tooltip */}
+              {tooltip && (
+                <g>
+                  <line x1={tooltip.x} y1={PAD.top} x2={tooltip.x} y2={PAD.top + cH} stroke="hsl(var(--primary))" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="3 2" />
+                  <circle cx={tooltip.x} cy={tooltip.y} r="3" fill="hsl(var(--primary))" />
+                  <rect
+                    x={Math.min(tooltip.x + 6, W - 80)}
+                    y={Math.max(tooltip.y - 22, PAD.top)}
+                    width="72"
+                    height="28"
+                    rx="0"
+                    fill="hsl(var(--card))"
+                    stroke="hsl(var(--muted))"
+                    strokeWidth="1"
+                  />
+                  <text x={Math.min(tooltip.x + 10, W - 76)} y={Math.max(tooltip.y - 10, PAD.top + 10)} fontSize="9" fill="hsl(var(--primary))" fontWeight="bold" fontFamily="monospace">
+                    {tooltip.value} queries
+                  </text>
+                  <text x={Math.min(tooltip.x + 10, W - 76)} y={Math.max(tooltip.y + 2, PAD.top + 20)} fontSize="8" fill="currentColor" fillOpacity="0.5" fontFamily="monospace">
+                    {tooltip.label}
+                  </text>
+                </g>
+              )}
+            </svg>
           </div>
         )}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none -bottom-10">
-          <svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" width="100%">
-            <path d="M0 100 Q 25 0 50 100 Q 75 0 100 100" fill="none" stroke="currentColor" strokeWidth="2" />
-          </svg>
-        </div>
       </CardContent>
     </Card>
   )
@@ -152,13 +246,14 @@ const Dashboard = () => (
 
       <StatsCards />
 
+      <NetworkLoadChart />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8">
           <LogTable compact />
         </div>
-        <div className="lg:col-span-4 space-y-8">
+        <div className="lg:col-span-4">
           <SystemHealth />
-          <NetworkLoadChart />
         </div>
       </div>
     </div>

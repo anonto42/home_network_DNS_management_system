@@ -78,13 +78,17 @@ test-images: ## Rebuild the check images (needed after Go/Node version bumps)
 .PHONY: build
 build: ## Build the production Docker image (single binary, embedded frontend)
 	@echo "$(YELLOW)Building production image...$(RESET)"
-	$(DC_PROD) build --no-cache
+	$(DC_PROD) build
 	@echo "$(GREEN)Image built: dns-server:latest$(RESET)"
 
 .PHONY: up
-up: ## Start the production stack (detached)
-	$(DC_PROD) up -d
-	@echo "$(GREEN)Running. Dashboard → http://localhost:8080$(RESET)"
+up: ## Build production image and start the stack (detached)
+	@echo "$(YELLOW)Building production image...$(RESET)"
+	$(DC_PROD) build
+	@echo "$(YELLOW)Starting production stack...$(RESET)"
+	$(DC_PROD) up -d --force-recreate
+	@echo "$(GREEN)Running. Dashboard → http://192.168.0.111:8080$(RESET)"
+	@echo "$(GREEN)DNS      → 192.168.0.111:53 (UDP)$(RESET)"
 
 .PHONY: down
 down: ## Stop all running stacks (prod + dev)
@@ -92,7 +96,7 @@ down: ## Stop all running stacks (prod + dev)
 	$(DC_DEV)  down        2>/dev/null || true
 
 .PHONY: restart
-restart: down up ## Rebuild and restart the production stack
+restart: down up ## Stop, rebuild, and restart the production stack
 
 # ── Code generation ───────────────────────────────────────────────────────────
 .PHONY: generate
