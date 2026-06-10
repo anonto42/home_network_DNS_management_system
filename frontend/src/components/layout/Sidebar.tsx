@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Server, 
@@ -33,6 +33,7 @@ const Logo = ({ collapsed }: { collapsed: boolean }) => (
 );
 
 export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
+  const navigate = useNavigate();
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/records', label: 'DNS Records', icon: Server },
@@ -73,6 +74,7 @@ export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = 
 
       <div className="px-3 mt-auto space-y-1">
         <Button
+          onClick={() => navigate('/records')}
           className={cn(
             "w-full rounded-md flex items-center h-10 mb-2 hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200",
             collapsed ? "justify-center p-0" : "gap-2 justify-start px-3"

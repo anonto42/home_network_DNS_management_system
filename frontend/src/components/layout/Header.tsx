@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Bell, 
@@ -36,6 +37,7 @@ import {
 import { SidebarContent } from './Sidebar';
 
 export const Header: React.FC = () => {
+  const navigate = useNavigate();
   const { isSidebarCollapsed } = useLayout();
 
   return (
@@ -139,13 +141,13 @@ export const Header: React.FC = () => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border/50" />
-            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
+            <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
               <User className="h-3.5 w-3.5" /> Profile
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
+            <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
               <Settings className="h-3.5 w-3.5" /> Settings
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
+            <DropdownMenuItem onClick={() => navigate('/cloud-sync')} className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
               <Cloud className="h-3.5 w-3.5" /> Cloud Sync
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border/50" />
