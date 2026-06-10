@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   Ban, 
   PlusCircle, 
@@ -8,7 +8,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Zap,
-  Cloud
+  Cloud,
+  Trash2
 } from 'lucide-react'
 import { getBlocklist, addToBlocklist, removeFromBlocklist, type BlockedDomain } from '../api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -41,6 +42,7 @@ interface AdlistSource {
 
 export default function BlocklistManager() {
   const [list, setList] = useState<BlockedDomain[]>([])
+  const [blockDomain, setBlockDomain] = useState('')
   const [listName, setListName] = useState('')
   const [listUrl, setListUrl] = useState('')
   const [listDesc, setListDesc] = useState('')
@@ -52,9 +54,30 @@ export default function BlocklistManager() {
     { name: 'Privacy Protections', url: 'tracking-list.internal', domains: 209000, lastSynced: '12 mins ago', enabled: true },
   ])
 
-  useEffect(() => {
-    getBlocklist().then((data) => setList(data || []))
+  const loadBlocklist = useCallback(async () => {
+    try {
+      const data = await getBlocklist()
+      setList(data || [])
+    } catch (e) {
+      console.error('Failed to load blocklist:', e)
+    }
   }, [])
+
+  useEffect(() => {
+    loadBlocklist()
+  }, [loadBlocklist])
+
+  const handleBlock = async () => {
+    if (!blockDomain.trim()) return
+    await addToBlocklist(blockDomain.trim().toLowerCase())
+    setBlockDomain('')
+    loadBlocklist()
+  }
+
+  const handleUnblock = async (domain: string) => {
+    await removeFromBlocklist(domain)
+    loadBlocklist()
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -119,6 +142,46 @@ export default function BlocklistManager() {
               </form>
             </CardContent>
           </Card>
+
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold tracking-tight text-foreground">Block Individual Domain</CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Manually add a domain to the blocklist.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleBlock() }}>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">Domain</label>
+                  <Input
+                    value={blockDomain}
+                    onChange={(e) => setBlockDomain(e.target.value)}
+                    placeholder="ads.example.com"
+                  />
+                </div>
+                <Button className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest" type="submit">
+                  <Ban className="h-4 w-4" /> Block Domain
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          {/* Blocked domains list */}
+          {list.length > 0 && (
+            <Card className="shadow-sm border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold tracking-tight text-foreground">Recently Blocked</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 space-y-1">
+                {list.slice(0, 10).map((d) => (
+                  <div key={d.domain} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/50 group">
+                    <span className="text-xs font-medium text-foreground truncate">{d.domain}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => handleUnblock(d.domain || '')}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Network Insights promo card — uses semantic tokens only */}
           <Card className="relative h-[240px] overflow-hidden group border border-primary/20 bg-primary/5 shadow-sm transition-transform duration-300 hover:scale-[1.01]">

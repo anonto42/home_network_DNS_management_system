@@ -19,7 +19,7 @@ export default defineConfig({
     proxy: {
       // In dev: all /api calls are forwarded to the Go backend
       '/api': {
-        target: 'http://dns-server:8080',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },
