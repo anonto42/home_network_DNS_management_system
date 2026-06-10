@@ -1,4 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend,
+} from 'recharts'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useTheme, type Theme } from './hooks/useTheme'
@@ -69,154 +73,163 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   )
 }
 
-const CHART_POINTS = 20
+const CHART_POINTS = 30
+
+type ChartSample = { time: string; total: number; blocked: number; cached: number; allowed: number }
 
 function NetworkLoadChart() {
-  const [samples, setSamples] = useState<number[]>(Array(CHART_POINTS).fill(0))
-  const [labels, setLabels] = useState<string[]>(Array(CHART_POINTS).fill(''))
+  const [data, setData] = useState<ChartSample[]>(() =>
+    Array(CHART_POINTS).fill(null).map(() => ({ time: '', total: 0, blocked: 0, cached: 0, allowed: 0 }))
+  )
   const [loading, setLoading] = useState(true)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; value: number; label: string } | null>(null)
+  const latest = data[data.length - 1]
 
   const fetch = useCallback(async () => {
     try {
       const s = await getStatus()
-      const total = (s.queries_forwarded ?? 0) + (s.queries_blocked ?? 0) + (s.queries_cached ?? 0)
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-      setSamples(prev => [...prev.slice(1), total])
-      setLabels(prev => [...prev.slice(1), now])
+      const allowed = s.queries_forwarded ?? 0
+      const blocked = s.queries_blocked ?? 0
+      const cached  = s.queries_cached  ?? 0
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+      setData(prev => [...prev.slice(1), { time, total: allowed + blocked + cached, allowed, blocked, cached }])
       setLoading(false)
-    } catch {
-      setLoading(false)
-    }
+    } catch { setLoading(false) }
   }, [])
 
   usePolling(fetch, 3000)
 
-  const W = 400
-  const H = 120
-  const PAD = { top: 12, right: 8, bottom: 28, left: 36 }
-  const cW = W - PAD.left - PAD.right
-  const cH = H - PAD.top - PAD.bottom
+  const pieData = useMemo(() => [
+    { name: 'Allowed', value: latest.allowed, color: '#22c55e' },
+    { name: 'Blocked', value: latest.blocked, color: '#f43f5e' },
+    { name: 'Cached',  value: latest.cached,  color: 'hsl(var(--primary))' },
+  ].filter(d => d.value > 0), [latest])
 
-  const max = Math.max(...samples, 1)
-  const points = samples.map((v, i) => ({
-    x: PAD.left + (i / (CHART_POINTS - 1)) * cW,
-    y: PAD.top + cH - (v / max) * cH,
-    v,
-  }))
-
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${(PAD.top + cH).toFixed(1)} L${PAD.left},${(PAD.top + cH).toFixed(1)} Z`
-
-  const yTicks = [0, Math.round(max / 2), max]
-  const xLabelIndices = [0, Math.floor(CHART_POINTS / 2), CHART_POINTS - 1]
+  const hasData = latest.total > 0
 
   return (
     <Card className="overflow-hidden shadow-sm">
-      <CardHeader className="pb-0">
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight text-foreground">
               <BarChart3 className="h-5 w-5 text-primary" />
               Network Load
             </CardTitle>
-            <CardDescription className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-0.5">
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-0.5">
               Live query rate · updates every 3s
             </CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-foreground">{samples[samples.length - 1].toLocaleString()}</p>
+            <p className="text-2xl font-bold text-foreground">{latest.total.toLocaleString()}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Queries</p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-4 pb-2 px-4">
+      <CardContent className="pb-4 px-2">
         {loading ? (
-          <Skeleton className="w-full h-[120px]" />
+          <Skeleton className="w-full h-[180px]" />
         ) : (
-          <div className="relative" onMouseLeave={() => setTooltip(null)}>
-            <svg
-              viewBox={`0 0 ${W} ${H}`}
-              className="w-full"
-              style={{ height: 120 }}
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.02" />
-                </linearGradient>
-              </defs>
-
-              {/* Y grid lines */}
-              {yTicks.map((t, i) => {
-                const y = PAD.top + cH - (t / max) * cH
-                return (
-                  <g key={i}>
-                    <line x1={PAD.left} y1={y} x2={PAD.left + cW} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
-                    <text x={PAD.left - 4} y={y + 3} textAnchor="end" fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">{t}</text>
-                  </g>
-                )
-              })}
-
-              {/* X axis labels */}
-              {xLabelIndices.map(idx => (
-                <text key={idx} x={points[idx].x} y={H - 4} textAnchor="middle" fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">
-                  {labels[idx]}
-                </text>
-              ))}
-
-              {/* Area fill */}
-              <path d={areaPath} fill="url(#areaGrad)" />
-
-              {/* Line */}
-              <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-
-              {/* Latest point dot */}
-              <circle
-                cx={points[points.length - 1].x}
-                cy={points[points.length - 1].y}
-                r="3"
-                fill="hsl(var(--primary))"
-              />
-
-              {/* Hover areas */}
-              {points.map((p, i) => (
-                <rect
-                  key={i}
-                  x={p.x - cW / CHART_POINTS / 2}
-                  y={PAD.top}
-                  width={cW / CHART_POINTS}
-                  height={cH}
-                  fill="transparent"
-                  onMouseEnter={() => setTooltip({ x: p.x, y: p.y, value: p.v, label: labels[i] })}
-                />
-              ))}
-
-              {/* Tooltip */}
-              {tooltip && (
-                <g>
-                  <line x1={tooltip.x} y1={PAD.top} x2={tooltip.x} y2={PAD.top + cH} stroke="hsl(var(--primary))" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="3 2" />
-                  <circle cx={tooltip.x} cy={tooltip.y} r="3" fill="hsl(var(--primary))" />
-                  <rect
-                    x={Math.min(tooltip.x + 6, W - 80)}
-                    y={Math.max(tooltip.y - 22, PAD.top)}
-                    width="72"
-                    height="28"
-                    rx="0"
-                    fill="hsl(var(--card))"
-                    stroke="hsl(var(--muted))"
-                    strokeWidth="1"
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+            {/* Area chart — 2/3 width */}
+            <div className="lg:col-span-2">
+              <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradAllowed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradBlocked" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#f43f5e" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradCached" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} vertical={false} />
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fontSize: 9, fontFamily: 'monospace', fill: 'currentColor', opacity: 0.4 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={Math.floor(CHART_POINTS / 4)}
                   />
-                  <text x={Math.min(tooltip.x + 10, W - 76)} y={Math.max(tooltip.y - 10, PAD.top + 10)} fontSize="9" fill="hsl(var(--primary))" fontWeight="bold" fontFamily="monospace">
-                    {tooltip.value} queries
-                  </text>
-                  <text x={Math.min(tooltip.x + 10, W - 76)} y={Math.max(tooltip.y + 2, PAD.top + 20)} fontSize="8" fill="currentColor" fillOpacity="0.5" fontFamily="monospace">
-                    {tooltip.label}
-                  </text>
-                </g>
+                  <YAxis
+                    tick={{ fontSize: 9, fontFamily: 'monospace', fill: 'currentColor', opacity: 0.4 }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    width={36}
+                  />
+                  <RechartsTooltip
+                    contentStyle={{
+                      background: 'hsl(var(--card))',
+                      border: 'none',
+                      borderRadius: 0,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                    }}
+                    labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 9 }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 2' }}
+                  />
+                  <Area type="monotone" dataKey="allowed" name="Allowed" stroke="#22c55e" strokeWidth={1.5} fill="url(#gradAllowed)" dot={false} />
+                  <Area type="monotone" dataKey="blocked" name="Blocked" stroke="#f43f5e" strokeWidth={1.5} fill="url(#gradBlocked)" dot={false} />
+                  <Area type="monotone" dataKey="cached"  name="Cached"  stroke="hsl(var(--primary))" strokeWidth={1.5} fill="url(#gradCached)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Pie chart breakdown — 1/3 width */}
+            <div className="flex flex-col items-center justify-center px-2">
+              {hasData ? (
+                <>
+                  <ResponsiveContainer width="100%" height={130}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={38}
+                        outerRadius={56}
+                        paddingAngle={2}
+                        dataKey="value"
+                        strokeWidth={0}
+                      >
+                        {pieData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        contentStyle={{ background: 'hsl(var(--card))', border: 'none', fontSize: 11, fontFamily: 'monospace', boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}
+                        itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1 w-full px-2">
+                    {pieData.map(d => (
+                      <div key={d.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2" style={{ background: d.color }} />
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{d.name}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-foreground">{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-8">
+                  <div className="w-16 h-16 bg-muted/30 flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-muted-foreground/30" />
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">No traffic yet</p>
+                </div>
               )}
-            </svg>
+            </div>
           </div>
         )}
       </CardContent>
