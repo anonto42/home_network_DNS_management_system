@@ -29,6 +29,10 @@ config
 LICENSE
 CONTRIBUTING.md
 
+# IDE
+.vscode
+.idea
+
 # OS noise
 .DS_Store
 Thumbs.db
