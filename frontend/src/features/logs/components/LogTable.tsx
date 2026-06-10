@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Copy, ChevronLeft, ChevronRight, Trash2, Search, FileX, ExternalLink } from 'lucide-react'
+import { Copy, ChevronLeft, ChevronRight, ChevronDown, Trash2, Search, FileX, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { getLogs, clearLogs, type QueryLog } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
@@ -192,7 +192,7 @@ export default function LogTable({ compact }: Props) {
                   <>
                     <TableRow
                       key={l.id}
-                      className={`group cursor-pointer ${isOdd ? 'bg-muted/[0.15]' : ''} hover:bg-primary/5 ${isExpanded ? 'bg-primary/5' : ''}`}
+                      className={`group cursor-pointer transition-colors ${isOdd ? 'bg-muted/[0.15]' : ''} hover:bg-primary/5 ${isExpanded ? '!bg-primary/8 border-l-2 border-l-primary' : ''}`}
                       onClick={() => !compact && setExpanded(isExpanded ? null : (l.id ?? null))}
                     >
                       <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap pl-4">
@@ -218,7 +218,7 @@ export default function LogTable({ compact }: Props) {
                           <Button
                             variant="ghost" size="icon"
                             className="h-5 w-5 opacity-0 group-hover/cell:opacity-100 transition-opacity shrink-0"
-                            onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(l.domain || '').then(() => toast.success('Copied')) }}
+                            onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(l.domain || '').then(() => toast.success('Copied to clipboard', { description: l.domain })) }}
                           >
                             <Copy className="h-3 w-3 text-muted-foreground" />
                           </Button>
@@ -229,54 +229,73 @@ export default function LogTable({ compact }: Props) {
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{guessType(l.domain || '')}</span>
                         </TableCell>
                       )}
-                      <TableCell className="text-right pr-4">
-                        <span className={`inline-flex items-center uppercase text-[9px] font-bold px-2 py-0.5 tracking-wider ${config.className}`}>
-                          {config.label}
-                        </span>
+                      <TableCell className="text-right pr-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className={`inline-flex items-center uppercase text-[9px] font-bold px-2 py-0.5 tracking-wider ${config.className}`}>
+                            {config.label}
+                          </span>
+                          {!compact && (
+                            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
 
-                    {/* Expanded detail row */}
+                    {/* Expanded detail panel */}
                     {isExpanded && !compact && (
-                      <TableRow key={`${l.id}-detail`} className="bg-muted/20 hover:bg-muted/20">
-                        <TableCell colSpan={6} className="py-3 px-4">
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Query ID</p>
-                              <p className="font-mono text-xs text-foreground">#{l.id}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Full Timestamp</p>
-                              <p className="font-mono text-xs text-foreground">{new Date(l.timestamp || '').toISOString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Client IP</p>
-                              <p className="font-mono text-xs text-foreground">{l.client_ip || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">MAC Address</p>
-                              <p className="font-mono text-xs text-foreground">{l.mac_address || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Action</p>
+                      <TableRow key={`${l.id}-detail`} className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="p-0">
+                          <div className="mx-4 mb-3 border-l-2 border-primary/40 bg-muted/30 rounded-r-md overflow-hidden">
+                            {/* Header strip */}
+                            <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-primary/10">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Query Detail · #{l.id}</span>
                               <span className={`inline-flex items-center uppercase text-[9px] font-bold px-2 py-0.5 tracking-wider ${config.className}`}>
                                 {config.label}
                               </span>
                             </div>
-                            <div className="col-span-2 sm:col-span-3">
-                              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Full Domain</p>
-                              <div className="flex items-center gap-2">
-                                <code className="font-mono text-xs text-foreground bg-muted/50 px-2 py-1 block">{l.domain}</code>
-                                <a
-                                  href={`https://www.virustotal.com/gui/domain/${l.domain}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={e => e.stopPropagation()}
-                                  className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 shrink-0"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> VirusTotal
-                                </a>
+
+                            {/* Detail grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-muted/50">
+                              <div className="px-4 py-3">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Timestamp</p>
+                                <p className="font-mono text-[11px] text-foreground leading-snug">{new Date(l.timestamp || '').toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</p>
                               </div>
+                              <div className="px-4 py-3">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Client IP</p>
+                                <p className="font-mono text-[11px] text-foreground">{l.client_ip || '—'}</p>
+                              </div>
+                              <div className="px-4 py-3">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">MAC Address</p>
+                                <p className="font-mono text-[11px] text-foreground">{l.mac_address || '—'}</p>
+                              </div>
+                              <div className="px-4 py-3">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Record Type</p>
+                                <p className="font-mono text-[11px] text-foreground font-bold">{guessType(l.domain || '')}</p>
+                              </div>
+                            </div>
+
+                            {/* Domain + action strip */}
+                            <div className="px-4 py-3 border-t border-muted/50 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Domain</p>
+                                <code className={`font-mono text-[12px] font-semibold truncate ${l.action === 'blocked' ? 'text-destructive' : 'text-foreground'}`}>{l.domain}</code>
+                                <Button
+                                  variant="ghost" size="icon"
+                                  className="h-6 w-6 shrink-0"
+                                  onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(l.domain || '').then(() => toast.success('Copied to clipboard', { description: l.domain })) }}
+                                >
+                                  <Copy className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                              </div>
+                              <a
+                                href={`https://www.virustotal.com/gui/domain/${l.domain}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="text-[9px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 flex items-center gap-1.5 shrink-0"
+                              >
+                                <ExternalLink className="h-3 w-3" /> Check on VirusTotal
+                              </a>
                             </div>
                           </div>
                         </TableCell>

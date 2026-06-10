@@ -96,7 +96,9 @@ export default function RecordManager() {
   }
 
   const handleCopy = (val: string) => {
-    navigator.clipboard.writeText(val).then(() => toast.success('Copied to clipboard'))
+    navigator.clipboard.writeText(val).then(() =>
+      toast.success('Copied to clipboard', { description: val })
+    )
   }
 
   const entries = Object.entries(records || {})
