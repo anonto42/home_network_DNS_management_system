@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend,
@@ -34,6 +34,7 @@ import { BlocklistManager } from './features/blocklist'
 import { getSettings, saveSettings } from './features/settings/api'
 import { getStatus } from './features/stats/api'
 import { usePolling } from './hooks/usePolling'
+import { useWindowFocus } from './hooks/useWindowFocus'
 import { ConfirmDialog } from './components/ui/confirm-dialog'
 import { Skeleton } from './components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -475,6 +476,21 @@ type SteeringRule = {
   enabled: boolean
 }
 
+const CONDITION_PLACEHOLDERS: Record<string, string> = {
+  'Domain':     '*.corp.internal',
+  'Client IP':  '192.168.1.0/24',
+  'Query Type': 'A, AAAA',
+  'Time Range': '09:00-18:00',
+}
+
+const ACTION_COLORS: Record<string, string> = {
+  'Forward':  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  'Block':    'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  'Redirect': 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+}
+
+const sel = "flex h-10 w-full bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+
 const SteeringPage = () => {
   const [rules, setRules] = useState<SteeringRule[]>([])
   const [loading, setLoading] = useState(true)
@@ -484,14 +500,32 @@ const SteeringPage = () => {
   const [conditionType, setConditionType] = useState('Domain')
   const [conditionValue, setConditionValue] = useState('')
   const [actionType, setActionType] = useState('Forward')
-  const [actionValue, setActionValue] = useState('')
+  const [actionTarget, setActionTarget] = useState('')
   const [priority, setPriority] = useState(1)
+  const fetchedRef = useRef(false)
+
+  const fetchRules = useCallback(async () => {
+    try {
+      const data = await apiGet<SteeringRule[]>('/steering')
+      setRules(data ?? [])
+    } catch {
+      toast.error('Failed to load steering rules')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    apiGet<SteeringRule[]>('/steering')
-      .then(data => { setRules(data ?? []); setLoading(false) })
-      .catch(() => { toast.error('Failed to load steering rules'); setLoading(false) })
-  }, [])
+    if (!fetchedRef.current) { fetchedRef.current = true; fetchRules() }
+  }, [fetchRules])
+
+  usePolling(fetchRules, 10000, [])
+  useWindowFocus(fetchRules)
+
+  const resetForm = () => {
+    setName(''); setConditionValue(''); setActionTarget(''); setPriority(1)
+    setConditionType('Domain'); setActionType('Forward')
+  }
 
   const handleAdd = async () => {
     if (!name.trim() || !conditionValue.trim()) {
@@ -505,22 +539,21 @@ const SteeringPage = () => {
         condition_type: conditionType,
         condition_value: conditionValue.trim(),
         action_type: actionType,
-        action_target: actionType === 'Block' ? '' : actionValue,
+        action_target: actionType === 'Block' ? '' : actionTarget.trim(),
         priority,
         enabled: true,
       }) as { id: number }
-      const newRule: SteeringRule = {
+      setRules(prev => [...prev, {
         id: res.id,
         name: name.trim(),
         condition_type: conditionType,
         condition_value: conditionValue.trim(),
         action_type: actionType,
-        action_target: actionType === 'Block' ? '' : actionValue,
+        action_target: actionType === 'Block' ? '' : actionTarget.trim(),
         priority,
         enabled: true,
-      }
-      setRules(prev => [...prev, newRule].sort((a, b) => a.priority - b.priority))
-      setName(''); setConditionValue(''); setActionValue('')
+      }].sort((a, b) => a.priority - b.priority))
+      resetForm()
       toast.success('Rule added', { description: name.trim() })
     } catch {
       toast.error('Failed to add rule')
@@ -543,6 +576,7 @@ const SteeringPage = () => {
     try {
       await apiDelete('/steering', { id })
       setRules(prev => prev.filter(r => r.id !== id))
+      setDeleteTarget(null)
       toast.success('Rule deleted')
     } catch {
       toast.error('Failed to delete rule')
@@ -553,12 +587,13 @@ const SteeringPage = () => {
 
   const renderSkeletonRows = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <TableRow key={i}>
+      <TableRow key={i} className={i % 2 === 1 ? 'bg-muted/[0.15]' : ''}>
         <TableCell><Skeleton className="h-3 w-6" /></TableCell>
         <TableCell><Skeleton className="h-3 w-32" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-40 rounded" /></TableCell>
-        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
+        <TableCell><Skeleton className="h-3 w-24" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-9 ml-auto" /></TableCell>
         <TableCell />
       </TableRow>
     ))
@@ -576,35 +611,61 @@ const SteeringPage = () => {
       />
 
       <div className="space-y-8">
+        {/* Header */}
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Traffic Steering</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Define routing rules to control how DNS traffic is resolved across your network.</p>
         </div>
 
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { label: 'Total Rules',    value: loading ? null : rules.length,       icon: <Globe className="h-5 w-5 text-primary" />,      bg: 'bg-primary/10' },
+            { label: 'Active Rules',   value: loading ? null : activeCount,         icon: <Gauge className="h-5 w-5 text-emerald-500" />,   bg: 'bg-emerald-500/10' },
+            { label: 'Disabled Rules', value: loading ? null : rules.length - activeCount, icon: <Power className="h-5 w-5 text-muted-foreground" />, bg: 'bg-muted/60' },
+          ].map(card => (
+            <Card key={card.label} className="shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`h-10 w-10 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
+                  {card.icon}
+                </div>
+                <div>
+                  {card.value == null
+                    ? <Skeleton className="h-7 w-12 mb-1" />
+                    : <p className="text-2xl font-bold text-foreground tabular-nums">{card.value}</p>
+                  }
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{card.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Create rule form */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <Card className="lg:col-span-8 shadow-sm">
-            <CardHeader className="pb-4">
+          <Card className="lg:col-span-12 shadow-sm">
+            <CardHeader className="pb-4 bg-muted/5">
               <div className="flex items-center gap-2">
-                <PlusCircle className="h-5 w-5 text-primary" />
+                <PlusCircle className="h-4 w-4 text-primary" />
                 <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Create Steering Rule</CardTitle>
               </div>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Route traffic based on domain, client IP, or query type.</CardDescription>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Route DNS traffic based on domain, client IP, query type, or time.</CardDescription>
             </CardHeader>
-            <CardContent className="p-6 pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="p-6 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Rule Name</label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Corporate VPN Traffic" />
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Block Social Media" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Priority</label>
-                  <select value={priority} onChange={e => setPriority(Number(e.target.value))} className="flex h-10 w-full items-center justify-between bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium text-foreground">
-                    {[1,2,3,4,5,6,7,8,9,10].map(p => <option key={p} value={p}>#{p}</option>)}
+                  <select value={priority} onChange={e => setPriority(Number(e.target.value))} className={sel}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(p => <option key={p} value={p}>#{p} — {p === 1 ? 'Highest' : p === 10 ? 'Lowest' : `Priority ${p}`}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Condition Type</label>
-                  <select value={conditionType} onChange={(e) => setConditionType(e.target.value)} className="flex h-10 w-full items-center justify-between bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium text-foreground">
+                  <select value={conditionType} onChange={e => setConditionType(e.target.value)} className={sel}>
                     <option>Domain</option>
                     <option>Client IP</option>
                     <option>Query Type</option>
@@ -613,110 +674,128 @@ const SteeringPage = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Condition Value</label>
-                  <Input value={conditionValue} onChange={(e) => setConditionValue(e.target.value)} placeholder={conditionType === 'Domain' ? '*.corp.internal' : conditionType === 'Client IP' ? '192.168.1.0/24' : conditionType === 'Query Type' ? 'A, AAAA' : '09:00-18:00'} />
+                  <Input
+                    value={conditionValue}
+                    onChange={e => setConditionValue(e.target.value)}
+                    placeholder={CONDITION_PLACEHOLDERS[conditionType]}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Action</label>
-                  <select value={actionType} onChange={(e) => { setActionType(e.target.value); if (e.target.value === 'Block') setActionValue('') }} className="flex h-10 w-full items-center justify-between bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium text-foreground">
+                  <select value={actionType} onChange={e => { setActionType(e.target.value); if (e.target.value === 'Block') setActionTarget('') }} className={sel}>
                     <option>Forward</option>
                     <option>Block</option>
                     <option>Redirect</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Target{actionType === 'Block' ? ' (N/A)' : ''}</label>
-                  <Input value={actionValue} onChange={(e) => setActionValue(e.target.value)} placeholder={actionType === 'Forward' ? '10.0.0.1' : actionType === 'Redirect' ? '192.168.1.100' : '—'} disabled={actionType === 'Block'} />
+                  <label className="text-sm font-bold text-foreground">
+                    Target {actionType === 'Block' ? <span className="text-muted-foreground font-normal">(not required)</span> : ''}
+                  </label>
+                  <Input
+                    value={actionTarget}
+                    onChange={e => setActionTarget(e.target.value)}
+                    placeholder={actionType === 'Forward' ? '10.0.0.1:53' : actionType === 'Redirect' ? '192.168.1.100' : '—'}
+                    disabled={actionType === 'Block'}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => { setName(''); setConditionValue(''); setActionValue('') }}>Cancel</Button>
-                <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm" onClick={handleAdd} disabled={saving}>{saving ? 'Adding…' : 'Add Rule'}</Button>
+                <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={resetForm}>
+                  Reset
+                </Button>
+                <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2" onClick={handleAdd} disabled={saving}>
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  {saving ? 'Adding…' : 'Add Rule'}
+                </Button>
               </div>
             </CardContent>
           </Card>
-
-          <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-            <Card className="bg-primary/5 border-primary/20 shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
-              <CardContent className="p-6 flex flex-col justify-between h-full min-h-[140px]">
-                <div className="p-2 w-fit bg-primary/10 rounded-lg border border-primary/20 shadow-sm">
-                  <Gauge className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-3xl font-bold tracking-tight text-foreground">{activeCount}</p>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Active Rules</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold text-foreground">{rules.length}</p>
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Total Rules</p>
-                </div>
-                <Globe className="h-6 w-6 text-muted-foreground" />
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
+        {/* Rules table */}
         <Card className="overflow-hidden shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 bg-muted/5">
-            <div>
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Steering Rules</CardTitle>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Ordered by priority — higher rules are evaluated first.</CardDescription>
+          <CardHeader className="pb-3 bg-muted/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Active Rules</CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Evaluated in priority order — #1 runs first.</CardDescription>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {rules.length} rule{rules.length !== 1 ? 's' : ''}
+              </span>
             </div>
-            <Button variant="outline" size="sm" className="gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm">
-              <Power className="h-4 w-4" /> Toggle All
-            </Button>
           </CardHeader>
-          <div className="overflow-x-auto p-4 pt-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/20">
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[60px]">#</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Rule</TableHead>
+                <TableRow className="bg-muted/30">
+                  <TableHead className="pl-4 w-[50px] text-[10px] font-bold uppercase tracking-widest text-muted-foreground">#</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Name</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden md:table-cell">Action</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Status</TableHead>
-                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[60px]"></TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Action</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[90px]">Enabled</TableHead>
+                  <TableHead className="pr-4 w-[50px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? renderSkeletonRows() : rules.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground text-sm font-medium">
-                      No steering rules configured yet. Create one above.
+                    <TableCell colSpan={6} className="h-40 text-center">
+                      <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
+                        <Globe className="h-8 w-8 opacity-40" />
+                        <div>
+                          <p className="text-sm font-medium">No steering rules yet</p>
+                          <p className="text-xs opacity-70 mt-1">Create a rule above to start routing DNS traffic</p>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  rules.map((rule) => (
-                    <TableRow key={rule.id} className="group transition-colors hover:bg-muted/50 hover:shadow-sm animate-in fade-in duration-200">
-                      <TableCell><span className="text-xs font-bold text-muted-foreground">#{rule.priority}</span></TableCell>
-                      <TableCell><span className="font-semibold text-foreground">{rule.name}</span></TableCell>
-                      <TableCell>
-                        <code className="bg-muted px-2 py-0.5 rounded text-xs font-medium text-muted-foreground">{rule.condition_type}: {rule.condition_value}</code>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline" className={`font-bold text-[9px] px-2 py-0 border-none ${rule.action_type === 'Block' ? 'bg-destructive/10 text-destructive' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
-                          {rule.action_type}{rule.action_target ? ` → ${rule.action_target}` : ''}
+                ) : rules.map((rule, idx) => (
+                  <TableRow key={rule.id} className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''} ${!rule.enabled ? 'opacity-50' : ''}`}>
+                    <TableCell className="pl-4">
+                      <span className="text-[10px] font-bold text-muted-foreground tabular-nums">#{rule.priority}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-semibold text-foreground">{rule.name}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/60 px-2 py-1 shrink-0">
+                          {rule.condition_type}
+                        </span>
+                        <span className="font-mono text-[11px] text-foreground">{rule.condition_value}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-[9px] font-bold px-2 py-0.5 border-none shrink-0 ${ACTION_COLORS[rule.action_type] || ACTION_COLORS['Forward']}`}>
+                          {rule.action_type}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule)} size="sm" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(rule.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                        {rule.action_target && (
+                          <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[120px]">→ {rule.action_target}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule)} size="sm" />
+                    </TableCell>
+                    <TableCell className="pr-4 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteTarget(rule.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
         </Card>
-
       </div>
     </PageTransition>
   )
