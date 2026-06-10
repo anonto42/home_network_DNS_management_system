@@ -8,7 +8,7 @@ services:
     image: dns-server:dev
     container_name: dns-server-dev
     ports:
-      - "5353:5353/udp"   # DNS (high port — no root needed in container)
+      - "5354:5353/udp"   # DNS (5354 on host → 5353 in container; avoids conflict with adb on 5353)
       - "8080:8080"       # HTTP dashboard / API
     volumes:
       - ../backend:/app           # live source mount — Air watches this
