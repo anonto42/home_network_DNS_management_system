@@ -1,134 +1,122 @@
-# ─── Metadata ──────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# NetShield DNS — Makefile
+#
+# Everything runs inside Docker. The only requirement on the host machine is:
+#   docker >= 24  +  docker compose >= v2
+#
+# Quick start:
+#   make setup     # one-time: wire git hooks + build check images
+#   make dev       # start backend + frontend with hot-reload
+#   make test      # lint + unit tests (same checks as pre-commit)
+#   make build     # build production Docker image
+#   make up        # run production image
+# ─────────────────────────────────────────────────────────────────────────────
 SHELL := /bin/bash
-BACKEND  := backend
-FRONTEND := frontend
 
-# Colors for output
-GREEN  := $(shell tput -Txterm setaf 2)
-YELLOW := $(shell tput -Txterm setaf 3)
-CYAN   := $(shell tput -Txterm setaf 6)
-RESET  := $(shell tput -Txterm sgr0)
+DC_PROD  := docker compose -f docker/docker-compose.yml
+DC_DEV   := docker compose -f docker/docker-compose.dev.yml
+DC_TEST  := docker compose -f docker/docker-compose.test.yml
+
+GREEN  := $(shell tput -Txterm setaf 2 2>/dev/null)
+YELLOW := $(shell tput -Txterm setaf 3 2>/dev/null)
+CYAN   := $(shell tput -Txterm setaf 6 2>/dev/null)
+RESET  := $(shell tput -Txterm sgr0  2>/dev/null)
+
+.DEFAULT_GOAL := help
 
 .PHONY: help
-help: ## Show this help
+help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-24s$(RESET) %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-22s$(RESET) %s\n", $$1, $$2}'
 
-# ── Development ────────────────────────────────────────────────────────────────
+# ── One-time setup ────────────────────────────────────────────────────────────
+.PHONY: setup
+setup: ## Wire git hooks and pre-build check images (run once after clone)
+	@echo "$(YELLOW)Registering git hooks (.githooks/)...$(RESET)"
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
+	@echo "$(YELLOW)Pre-building Docker check images (speeds up first commit)...$(RESET)"
+	$(DC_TEST) build
+	@echo "$(GREEN)Done. You only need Docker to work on this project.$(RESET)"
+
+# ── Development ───────────────────────────────────────────────────────────────
 .PHONY: dev
-dev: ## Run backend (Air) + frontend (Vite) in parallel
-	@echo "$(YELLOW)Starting dev mode...$(RESET)"
-	@$(MAKE) -j2 dev-backend dev-frontend
+dev: ## Start backend (Air hot-reload) + frontend (Vite HMR) in Docker
+	@echo "$(YELLOW)Starting dev stack...$(RESET)"
+	@echo "  Backend  → http://localhost:8080"
+	@echo "  Frontend → http://localhost:5173"
+	@echo "  DNS      → localhost:5353 (UDP)"
+	$(DC_DEV) up --build
 
-.PHONY: dev-backend
-dev-backend: ## Run backend with Air hot-reload
-	@echo "$(GREEN)Starting backend (Air)...$(RESET)"
-	cd $(BACKEND) && air
+.PHONY: dev-down
+dev-down: ## Stop the dev stack
+	$(DC_DEV) down
 
-.PHONY: dev-frontend
-dev-frontend: ## Run frontend with Vite HMR
-	@echo "$(GREEN)Starting frontend (Vite)...$(RESET)"
-	cd $(FRONTEND) && npm run dev
+.PHONY: logs
+logs: ## Tail logs from the dev stack
+	$(DC_DEV) logs -f
 
-# ── Build ──────────────────────────────────────────────────────────────────────
-.PHONY: build
-build: build-backend build-frontend ## Build all production artifacts
-
-.PHONY: build-backend
-build-backend: ## Build Go binary (dev, no embed)
-	cd $(BACKEND) && go build -o bin/dns-server ./cmd/dns-server
-
-.PHONY: build-frontend
-build-frontend: ## Build React production bundle
-	cd $(FRONTEND) && npm run build
-
-.PHONY: build-prod
-build-prod: ## Build single binary with embedded frontend
-	@echo "$(YELLOW)Building frontend...$(RESET)"
-	cd $(FRONTEND) && npm run build
-	@echo "$(YELLOW)Copying dist to $(BACKEND)/static...$(RESET)"
-	rm -rf $(BACKEND)/static
-	cp -r $(FRONTEND)/dist $(BACKEND)/static
-	@echo "$(YELLOW)Compiling Go binary with embedded frontend...$(RESET)"
-	cd $(BACKEND) && go build -tags embed -o bin/dns-server ./cmd/dns-server
-	@echo "$(GREEN)Build complete: $(BACKEND)/bin/dns-server$(RESET)"
-
-# ── Code Generation ────────────────────────────────────────────────────────────
-.PHONY: generate
-generate: ## Generate TypeScript types from Go API (swag → openapi → api-types.ts)
-	@echo "$(YELLOW)Generating Swagger docs...$(RESET)"
-	cd $(BACKEND) && go run github.com/swaggo/swag/cmd/swag@latest init \
-		-g cmd/dns-server/main.go -o ./docs --parseInternal
-	@echo "$(YELLOW)Converting to OpenAPI 3...$(RESET)"
-	cd $(BACKEND)/docs && npx -y swagger2openapi swagger.json --outfile openapi.json
-	@echo "$(YELLOW)Generating TypeScript types...$(RESET)"
-	npx -y openapi-typescript $(BACKEND)/docs/openapi.json \
-		-o $(FRONTEND)/src/features/api-types.ts
-	@echo "$(GREEN)Type generation complete.$(RESET)"
-
-# ── Testing ────────────────────────────────────────────────────────────────────
+# ── Testing & linting (all inside Docker) ─────────────────────────────────────
 .PHONY: test
-test: test-backend ## Run all tests
+test: test-backend test-frontend ## Run all checks (lint + unit tests)
 
 .PHONY: test-backend
-test-backend: ## Run Go tests
-	cd $(BACKEND) && go test ./... -v
+test-backend: ## Run Go lint (golangci-lint) + unit tests in Docker
+	@echo "$(YELLOW)Running Go checks...$(RESET)"
+	$(DC_TEST) run --rm --no-deps backend-check
 
-# ── Linting ────────────────────────────────────────────────────────────────────
-.PHONY: lint
-lint: lint-backend lint-frontend ## Run all linters
+.PHONY: test-frontend
+test-frontend: ## Run TypeScript type-check in Docker
+	@echo "$(YELLOW)Running TypeScript check...$(RESET)"
+	$(DC_TEST) run --rm --no-deps frontend-check
 
-.PHONY: lint-backend
-lint-backend: ## Run golangci-lint
-	cd $(BACKEND) && golangci-lint run ./...
+.PHONY: test-images
+test-images: ## Rebuild the check images (needed after Go/Node version bumps)
+	$(DC_TEST) build --no-cache
 
-.PHONY: lint-frontend
-lint-frontend: ## Run TypeScript/React lint
-	cd $(FRONTEND) && npx tsc --noEmit
+# ── Production build & run ───────────────────────────────────────────────────
+.PHONY: build
+build: ## Build the production Docker image (single binary, embedded frontend)
+	@echo "$(YELLOW)Building production image...$(RESET)"
+	$(DC_PROD) build --no-cache
+	@echo "$(GREEN)Image built: dns-server:latest$(RESET)"
 
-# ── Docker ─────────────────────────────────────────────────────────────────────
-.PHONY: docker-up
-docker-up: ## Start production stack
-	docker compose -f docker/docker-compose.yml up -d --build
+.PHONY: up
+up: ## Start the production stack (detached)
+	$(DC_PROD) up -d
+	@echo "$(GREEN)Running. Dashboard → http://localhost:8080$(RESET)"
 
-.PHONY: docker-up-dev
-docker-up-dev: ## Start dev stack with hot-reload volumes
-	docker compose -f docker/docker-compose.dev.yml up --build
+.PHONY: down
+down: ## Stop all running stacks (prod + dev)
+	$(DC_PROD) down        2>/dev/null || true
+	$(DC_DEV)  down        2>/dev/null || true
 
-.PHONY: docker-down
-docker-down: ## Stop all containers (prod + dev + test)
-	docker compose -f docker/docker-compose.yml down
-	docker compose -f docker/docker-compose.dev.yml down 2>/dev/null || true
-	docker compose -f docker/docker-compose.test.yml down 2>/dev/null || true
+.PHONY: restart
+restart: down up ## Rebuild and restart the production stack
 
-.PHONY: docker-build-test
-docker-build-test: ## Build the test image (pre-build for faster pre-commit hooks)
-	docker compose -f docker/docker-compose.test.yml build
+# ── Code generation ───────────────────────────────────────────────────────────
+.PHONY: generate
+generate: ## Regenerate TypeScript API types from Go swagger annotations
+	@echo "$(YELLOW)Generating API types (runs inside Docker)...$(RESET)"
+	$(DC_TEST) run --rm --no-deps backend-check \
+		sh -c "go run github.com/swaggo/swag/cmd/swag@latest init \
+		           -g cmd/dns-server/main.go -o ./docs --parseInternal && \
+		       npx -y swagger2openapi docs/swagger.json --outfile docs/openapi.json"
+	docker run --rm \
+		-v "$(PWD)/backend/docs:/in" \
+		-v "$(PWD)/frontend/src/features:/out" \
+		node:22-alpine \
+		sh -c "npx -y openapi-typescript /in/openapi.json -o /out/api-types.ts"
+	@echo "$(GREEN)api-types.ts updated.$(RESET)"
 
-.PHONY: docker-test-backend
-docker-test-backend: ## Run Go lint + tests inside the test container
-	docker compose -f docker/docker-compose.test.yml run --rm backend-check
-
-.PHONY: docker-test-frontend
-docker-test-frontend: ## Run TypeScript check inside the test container
-	docker compose -f docker/docker-compose.test.yml run --rm frontend-check
-
-# ── Setup ──────────────────────────────────────────────────────────────────────
-.PHONY: setup
-setup: ## Install all dev tools and dependencies
-	@echo "$(YELLOW)Installing Go tools (system)...$(RESET)"
-	go install github.com/air-verse/air@latest
-	go install github.com/swaggo/swag/cmd/swag@latest
-	@echo "$(YELLOW)Installing frontend dependencies...$(RESET)"
-	cd $(FRONTEND) && npm install
-	@echo "$(YELLOW)Setting up git hooks...$(RESET)"
-	git config core.hooksPath .githooks
-	@echo "$(YELLOW)Pre-building Docker test image...$(RESET)"
-	$(MAKE) docker-build-test
-	@echo "$(GREEN)Setup complete. You only need Docker to develop.$(RESET)"
-
-# ── Cleanup ────────────────────────────────────────────────────────────────────
+# ── Cleanup ───────────────────────────────────────────────────────────────────
 .PHONY: clean
-clean: ## Remove all build artifacts
-	rm -rf $(BACKEND)/bin $(BACKEND)/tmp $(BACKEND)/static $(BACKEND)/docs
-	rm -rf $(FRONTEND)/dist
+clean: ## Remove local build artefacts (not Docker images/volumes)
+	rm -rf backend/bin backend/tmp backend/static backend/docs
+	rm -rf frontend/dist
+
+.PHONY: clean-all
+clean-all: clean ## Remove build artefacts AND all Docker images/volumes for this project
+	$(DC_PROD) down -v --rmi all 2>/dev/null || true
+	$(DC_DEV)  down -v --rmi all 2>/dev/null || true
+	$(DC_TEST) down -v --rmi all 2>/dev/null || true

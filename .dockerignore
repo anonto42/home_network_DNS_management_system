@@ -1,0 +1,34 @@
+# Git
+.git
+.githooks
+.github
+github
+
+# Build artifacts
+frontend/dist
+frontend/.vite
+backend/bin
+backend/tmp
+backend/static
+
+# Dependencies (rebuilt inside Docker)
+frontend/node_modules
+
+# Runtime data (mounted as named volume in production)
+data/
+
+# Dev tools config (not needed in image)
+backend/.air.toml
+backend/tmp
+
+# Docs / non-code
+docs
+firmware
+config
+*.md
+LICENSE
+CONTRIBUTING.md
+
+# OS noise
+.DS_Store
+Thumbs.db

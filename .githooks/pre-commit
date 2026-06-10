@@ -1,25 +1,45 @@
 #!/bin/sh
+# pre-commit — all checks run inside Docker (no local Go/Node required)
 set -e
 
 cd "$(git rev-parse --show-toplevel)"
 
-PASS=true
-TEST_COMPOSE="docker compose -f docker/docker-compose.test.yml"
+# ── Guard: Docker must be running ────────────────────────────────────────────
+if ! docker info > /dev/null 2>&1; then
+  echo "ERROR: Docker is not running. Start Docker and try again."
+  exit 1
+fi
 
+DC="docker compose -f docker/docker-compose.test.yml"
+PASS=true
+
+# Detect which file types changed in this commit
 CHANGED_GO=$(git diff --cached --name-only --diff-filter=ACMR | grep -c '^backend/.*\.go$' || true)
 CHANGED_TS=$(git diff --cached --name-only --diff-filter=ACMR | grep -c '^frontend/src/.*\.\(ts\|tsx\)$' || true)
 
+# ── Go: lint + test ───────────────────────────────────────────────────────────
 if [ "$CHANGED_GO" -gt 0 ]; then
   echo "=== Checking Go code ==="
-  $TEST_COMPOSE run --rm --no-deps backend-check \
+  # The backend-check image has golangci-lint baked in.
+  # Source is volume-mounted so no rebuild is needed on code changes.
+  $DC run --rm --no-deps backend-check \
     sh -c "golangci-lint run ./... && go test ./..." \
-    || { echo "FAIL: Go checks"; PASS=false; }
+    || { echo "FAIL: Go checks failed"; PASS=false; }
 fi
 
+# ── TypeScript: type-check ────────────────────────────────────────────────────
 if [ "$CHANGED_TS" -gt 0 ]; then
   echo "=== Checking TypeScript ==="
-  $TEST_COMPOSE run --rm --no-deps frontend-check \
-    || { echo "FAIL: TypeScript check"; PASS=false; }
+  # frontend-check runs: npm ci --prefer-offline && npx tsc --noEmit
+  # node_modules are persisted in a named volume — fast after the first run.
+  $DC run --rm --no-deps frontend-check \
+    || { echo "FAIL: TypeScript check failed"; PASS=false; }
 fi
 
-$PASS || exit 1
+# ── Result ────────────────────────────────────────────────────────────────────
+if [ "$PASS" = false ]; then
+  echo ""
+  echo "Pre-commit checks failed. Fix the errors above and try again."
+  echo "To skip (emergency only): git commit --no-verify"
+  exit 1
+fi

@@ -1,4 +1,7 @@
 services:
+  # ── Go: golangci-lint + go test ────────────────────────────────────────────
+  # Source is volume-mounted so the pre-built image is always up to date;
+  # only tool binaries and the module cache are baked in.
   backend-check:
     build:
       context: ../
@@ -6,14 +9,26 @@ services:
       target: test
     image: dns-server:test
     volumes:
-      - ../backend:/app
+      - ../backend:/app           # live source — no rebuild needed on code change
+      - go-pkg-cache:/go/pkg      # reuse compiled packages between runs
     environment:
-      - CGO_ENABLED=1
+      CGO_ENABLED: "1"
+      GOWORK: "off"
+    # Default command; pre-commit hook overrides with the same value
     command: sh -c "golangci-lint run ./... && go test ./..."
 
+  # ── TypeScript: tsc --noEmit ───────────────────────────────────────────────
+  # node_modules must exist before tsc runs. We install them into a named
+  # volume so subsequent runs are fast (only changed packages reinstalled).
   frontend-check:
     image: node:22-alpine
     working_dir: /app
     volumes:
       - ../frontend:/app
-    entrypoint: ["npx", "tsc", "--noEmit"]
+      - frontend-nm:/app/node_modules   # persisted node_modules — survives restarts
+    # npm ci is idempotent; the named volume keeps it fast after the first run
+    entrypoint: ["/bin/sh", "-c", "npm ci --prefer-offline && npx tsc --noEmit"]
+
+volumes:
+  go-pkg-cache:
+  frontend-nm:
