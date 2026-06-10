@@ -1,14 +1,12 @@
+import { apiGet, apiDelete } from '../../../hooks/api'
 import { components } from '../../api-types'
 
 export type QueryLog = components['schemas']['models.QueryLog']
 
-const BASE = '/api'
-
 export async function getLogs(): Promise<QueryLog[]> {
-  const res = await fetch(`${BASE}/logs`)
-  return res.json()
+  return apiGet<QueryLog[]>('/logs')
 }
 
 export async function clearLogs(): Promise<void> {
-  await fetch(`${BASE}/logs`, { method: 'DELETE' })
+  await apiDelete('/logs')
 }

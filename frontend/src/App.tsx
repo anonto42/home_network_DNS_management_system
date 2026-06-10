@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './hooks/useAuth'
+import LoginPage from './pages/LoginPage'
 import { 
   Calendar, 
   Download,
@@ -20,6 +22,7 @@ import { SystemHealth } from './features/stats/components/SystemHealth'
 import { LogTable } from './features/logs'
 import { RecordManager } from './features/records'
 import { BlocklistManager } from './features/blocklist'
+import { getSettings, saveSettings } from './features/settings/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -342,7 +345,32 @@ const SteeringPage = () => {
 }
 
 const SettingsPage = () => {
+  const [serverName, setServerName] = useState('north-america-east-1')
   const [autoUpdate, setAutoUpdate] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    getSettings().then((s) => {
+      if (s.server_name) setServerName(s.server_name)
+      if (s.auto_update) setAutoUpdate(s.auto_update === 'true')
+      setLoaded(true)
+    }).catch(() => setLoaded(true))
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await saveSettings({ server_name: serverName, auto_update: String(autoUpdate) })
+    } catch (e) {
+      console.error('Failed to save settings:', e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!loaded) return null
+
   return (
     <div className="max-w-4xl space-y-8">
       <div className="space-y-1">
@@ -364,7 +392,8 @@ const SettingsPage = () => {
               </div>
               <input
                 className="flex h-9 w-full sm:w-64 rounded-md border border-border/50 bg-muted/5 px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-medium text-foreground"
-                defaultValue="north-america-east-1"
+                value={serverName}
+                onChange={e => setServerName(e.target.value)}
               />
             </div>
             <div className="h-[1px] bg-border/50" />
@@ -398,8 +427,8 @@ const SettingsPage = () => {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border/50">Discard Changes</Button>
-          <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest">Save Configuration</Button>
+          <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border/50" onClick={() => { setServerName('north-america-east-1'); setAutoUpdate(true) }}>Discard Changes</Button>
+          <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Configuration'}</Button>
         </div>
       </div>
     </div>
@@ -511,20 +540,33 @@ const CloudSyncPage = () => {
   )
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
 export default function App() {
   return (
-    <DashboardLayout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/logs" element={<LogsPage />} />
-        <Route path="/records" element={<RecordManager />} />
-        <Route path="/blocklist" element={<BlocklistManager />} />
-        <Route path="/steering" element={<SteeringPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/cloud-sync" element={<CloudSyncPage />} />
-        <Route path="*" element={<Dashboard />} />
-      </Routes>
-    </DashboardLayout>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/*" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/logs" element={<LogsPage />} />
+              <Route path="/records" element={<RecordManager />} />
+              <Route path="/blocklist" element={<BlocklistManager />} />
+              <Route path="/steering" element={<SteeringPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/cloud-sync" element={<CloudSyncPage />} />
+              <Route path="*" element={<Dashboard />} />
+            </Routes>
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+    </Routes>
   )
 }

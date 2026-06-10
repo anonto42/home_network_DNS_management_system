@@ -48,22 +48,30 @@ export default function RecordManager() {
   const [recordType, setRecordType] = useState('A (IPv4 Address)')
 
   useEffect(() => {
-    getRecords().then((data) => setRecords(data || {}))
+    getRecords().then((data) => setRecords(data || {})).catch((e) => console.error('Failed to load records:', e))
   }, [])
 
   const handleAdd = async () => {
     if (!domain || !ip) return
-    await addRecord(domain, ip)
-    const data = await getRecords()
-    setRecords(data || {})
-    setDomain('')
-    setIp('')
+    try {
+      await addRecord(domain, ip)
+      const data = await getRecords()
+      setRecords(data || {})
+      setDomain('')
+      setIp('')
+    } catch (e) {
+      console.error('Failed to add record:', e)
+    }
   }
 
   const handleDelete = async (d: string) => {
-    await deleteRecord(d)
-    const data = await getRecords()
-    setRecords(data || {})
+    try {
+      await deleteRecord(d)
+      const data = await getRecords()
+      setRecords(data || {})
+    } catch (e) {
+      console.error('Failed to delete record:', e)
+    }
   }
 
   const entries = Object.entries(records || {})

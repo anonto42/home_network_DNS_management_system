@@ -8,8 +8,9 @@ import {
   Copy, 
   ChevronLeft, 
   ChevronRight,
+  Trash2,
 } from 'lucide-react'
-import { getLogs, type QueryLog } from '../api'
+import { getLogs, clearLogs, type QueryLog } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -58,6 +59,16 @@ export default function LogTable({ compact }: Props) {
     }
   }, 3000)
 
+  const handleClear = async () => {
+    if (!confirm('Clear all query logs?')) return
+    try {
+      await clearLogs()
+      setLogs([])
+    } catch (error) {
+      console.error('Failed to clear logs:', error)
+    }
+  }
+
   const filteredLogs = filter === 'all'
     ? logs
     : logs.filter(l => {
@@ -71,18 +82,23 @@ export default function LogTable({ compact }: Props) {
         <CardHeader className="pb-4 border-b border-border/50 bg-muted/5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle className="text-lg font-bold tracking-tight text-foreground">Query Logs</CardTitle>
-            <div className="flex bg-muted/50 p-1 rounded-lg w-fit border border-border/30">
-              {(['all', 'blocked', 'allowed'] as const).map((f) => (
-                <Button
-                  key={f}
-                  variant={filter === f ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setFilter(f)}
-                  className={`px-4 h-7 text-[10px] font-bold uppercase tracking-wider ${filter === f ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  {f}
-                </Button>
-              ))}
+            <div className="flex items-center gap-3">
+              <div className="flex bg-muted/50 p-1 rounded-lg w-fit border border-border/30">
+                {(['all', 'blocked', 'allowed'] as const).map((f) => (
+                  <Button
+                    key={f}
+                    variant={filter === f ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilter(f)}
+                    className={`px-4 h-7 text-[10px] font-bold uppercase tracking-wider ${filter === f ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                  >
+                    {f}
+                  </Button>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" className="gap-1.5 text-[10px] font-bold uppercase tracking-widest border-border/50 text-destructive hover:text-destructive" onClick={handleClear}>
+                <Trash2 className="h-3.5 w-3.5" /> Clear
+              </Button>
             </div>
           </div>
         </CardHeader>

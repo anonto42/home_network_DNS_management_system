@@ -10,8 +10,11 @@ func RegisterRoutes(r chi.Router, database *db.DB, dnsHandler *dns.Handler) {
 	h := NewHandler(database, dnsHandler)
 
 	r.Get("/health", h.Health)
+	r.Post("/api/login", h.Login)
 
 	r.Route("/api", func(r chi.Router) {
+		r.Use(Auth(database))
+
 		r.Get("/status", h.GetStatus)
 		r.Get("/logs", h.GetLogs)
 		r.Delete("/logs", h.ClearLogs)
@@ -21,5 +24,7 @@ func RegisterRoutes(r chi.Router, database *db.DB, dnsHandler *dns.Handler) {
 		r.Get("/blocklist", h.GetBlocklist)
 		r.Post("/blocklist", h.AddToBlocklist)
 		r.Delete("/blocklist", h.RemoveFromBlocklist)
+		r.Get("/settings", h.GetSettings)
+		r.Put("/settings", h.SaveSettings)
 	})
 }

@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	_ "modernc.org/sqlite"
 	"github.com/sohidul/dns-server/internal/models"
 	"golang.org/x/crypto/argon2"
+	_ "modernc.org/sqlite"
 )
 
 type DB struct {
@@ -70,12 +70,20 @@ func Open(path string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn.Exec("PRAGMA journal_mode=WAL")
-	conn.Exec("PRAGMA busy_timeout=5000")
-	conn.Exec("PRAGMA synchronous=NORMAL")
+	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		return nil, err
+	}
+	if _, err := conn.Exec("PRAGMA busy_timeout=5000"); err != nil {
+		return nil, err
+	}
+	if _, err := conn.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		return nil, err
+	}
 
 	queries := []string{
 		"CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, password TEXT)",
+		"CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT, created_at TEXT)",
+		"CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)",
 		"CREATE TABLE IF NOT EXISTS query_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, domain TEXT, client_ip TEXT, action TEXT)",
 		"CREATE TABLE IF NOT EXISTS custom_records (domain TEXT PRIMARY KEY, ip TEXT)",
 		"CREATE TABLE IF NOT EXISTS blocklist (domain TEXT PRIMARY KEY, added_at TEXT, wildcard INTEGER DEFAULT 0)",
@@ -189,10 +197,18 @@ func (db *DB) Flush() {
 
 func (db *DB) GetStats() models.Stats {
 	var forwarded, blocked, custom, cached int
-	db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'forwarded'").Scan(&forwarded)
-	db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'blocked'").Scan(&blocked)
-	db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'custom'").Scan(&custom)
-	db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'cached'").Scan(&cached)
+	if err := db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'forwarded'").Scan(&forwarded); err != nil {
+		slog.Error("get stats forwarded failed", "error", err)
+	}
+	if err := db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'blocked'").Scan(&blocked); err != nil {
+		slog.Error("get stats blocked failed", "error", err)
+	}
+	if err := db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'custom'").Scan(&custom); err != nil {
+		slog.Error("get stats custom failed", "error", err)
+	}
+	if err := db.conn.QueryRow("SELECT COUNT(*) FROM query_logs WHERE action = 'cached'").Scan(&cached); err != nil {
+		slog.Error("get stats cached failed", "error", err)
+	}
 	return models.Stats{
 		QueriesForwarded: forwarded,
 		QueriesBlocked:   blocked,
@@ -200,8 +216,6 @@ func (db *DB) GetStats() models.Stats {
 		QueriesCached:    cached,
 	}
 }
-
-
 
 func (db *DB) GetLogs(limit int) []models.QueryLog {
 	rows, err := db.conn.Query("SELECT id, timestamp, domain, client_ip, action FROM query_logs ORDER BY id DESC LIMIT ?", limit)
@@ -317,6 +331,79 @@ func (db *DB) RemoveFromBlocklist(domain string) {
 
 func (db *DB) IsBlocked(domain string) bool {
 	var count int
-	db.conn.QueryRow("SELECT COUNT(*) FROM blocklist WHERE ? LIKE CASE WHEN wildcard THEN '%' || domain ELSE domain END", domain).Scan(&count)
+	if err := db.conn.QueryRow("SELECT COUNT(*) FROM blocklist WHERE ? LIKE CASE WHEN wildcard THEN '%' || domain ELSE domain END", domain).Scan(&count); err != nil {
+		slog.Error("is blocked query failed", "error", err)
+	}
 	return count > 0
+}
+
+func (db *DB) CreateSession(email string) (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	token := base64.RawURLEncoding.EncodeToString(b)
+	_, err := db.conn.Exec("INSERT INTO sessions (token, email, created_at) VALUES (?, ?, ?)", token, email, time.Now().Format(time.RFC3339))
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (db *DB) VerifySession(token string) (string, bool) {
+	var email string
+	err := db.conn.QueryRow("SELECT email FROM sessions WHERE token = ?", token).Scan(&email)
+	if err != nil {
+		return "", false
+	}
+	return email, true
+}
+
+func (db *DB) DeleteSession(token string) {
+	if _, err := db.conn.Exec("DELETE FROM sessions WHERE token = ?", token); err != nil {
+		slog.Error("delete session failed", "error", err)
+	}
+}
+
+func (db *DB) GetSettings() map[string]string {
+	rows, err := db.conn.Query("SELECT key, value FROM settings")
+	if err != nil {
+		return map[string]string{}
+	}
+	defer rows.Close()
+	s := map[string]string{}
+	for rows.Next() {
+		var k, v string
+		if rows.Scan(&k, &v) == nil {
+			s[k] = v
+		}
+	}
+	return s
+}
+
+func (db *DB) SaveSettings(settings map[string]string) {
+	tx, err := db.conn.Begin()
+	if err != nil {
+		slog.Error("settings tx begin failed", "error", err)
+		return
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			slog.Error("settings tx rollback failed", "error", err)
+		}
+	}()
+	stmt, err := tx.Prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+	if err != nil {
+		slog.Error("settings prepare failed", "error", err)
+		return
+	}
+	defer stmt.Close()
+	for k, v := range settings {
+		if _, err := stmt.Exec(k, v); err != nil {
+			slog.Error("settings save failed", "key", k, "error", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		slog.Error("settings commit failed", "error", err)
+	}
 }

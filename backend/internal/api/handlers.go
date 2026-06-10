@@ -218,6 +218,43 @@ func (h *Handler) AddToBlocklist(w http.ResponseWriter, r *http.Request) {
 // @Success      200     {object}  map[string]bool
 // @Failure      400     {object}  map[string]string
 // @Router       /api/blocklist [delete]
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	if !h.db.VerifyUser(body.Email, body.Password) {
+		respond(w, 401, map[string]string{"error": "invalid email or password"})
+		return
+	}
+	token, err := h.db.CreateSession(body.Email)
+	if err != nil {
+		respond(w, 500, map[string]string{"error": "failed to create session"})
+		return
+	}
+	respond(w, 200, map[string]string{"token": token})
+}
+
+func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	respond(w, 200, h.db.GetSettings())
+}
+
+func (h *Handler) SaveSettings(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	h.db.SaveSettings(body)
+	respond(w, 200, map[string]bool{"ok": true})
+}
+
 func (h *Handler) RemoveFromBlocklist(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
