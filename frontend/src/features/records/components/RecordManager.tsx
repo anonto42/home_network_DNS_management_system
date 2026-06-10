@@ -10,7 +10,6 @@ import {
   Pencil,
   Trash2,
   ServerOff,
-  ArrowRight
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getRecords, addRecord, deleteRecord } from '../api'
@@ -114,7 +113,7 @@ export default function RecordManager() {
     ))
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <div className="w-full space-y-8">
       <ConfirmDialog
         open={deleteTarget !== null}
         title="Delete DNS record?"
@@ -301,18 +300,6 @@ export default function RecordManager() {
         </div>
       </Card>
 
-      <Card className="bg-primary/5 border-primary/20 overflow-hidden relative p-8 md:p-12 shadow-sm">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <Badge variant="outline" className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary border-primary/30 bg-primary/10">Pro Feature</Badge>
-          <h4 className="text-2xl md:text-3xl font-bold text-foreground">Need to manage global zones?</h4>
-          <p className="text-muted-foreground text-sm md:text-base leading-relaxed">NetShield Pro allows you to synchronize local records with global edge nodes for sub-millisecond resolution worldwide.</p>
-          <Button className="gap-2 group shadow-sm text-[10px] font-bold uppercase tracking-widest" size="lg">
-            Upgrade to Pro
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </div>
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
-      </Card>
     </div>
   )
 }

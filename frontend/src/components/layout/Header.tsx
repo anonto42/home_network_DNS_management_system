@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  Bell, 
-  Cloud, 
-  UserCircle, 
+import {
+  Search,
+  Bell,
+  Cloud,
+  UserCircle,
   ChevronDown,
   Menu,
   CheckCircle2,
@@ -17,8 +17,12 @@ import {
   Route as RouteIcon,
   Shield,
   ListTodo,
-  ArrowRight
+  ArrowRight,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
+import { useTheme, type Theme } from '../../hooks/useTheme';
 import { useLayout } from '../../hooks/useLayout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -54,9 +58,20 @@ const searchItems = [
   { path: '/cloud-sync', label: 'Cloud Sync', icon: Cloud, keywords: 'sync cloud backup cluster node' },
 ]
 
+const THEME_CYCLE: Theme[] = ['light', 'dark', 'system']
+const THEME_ICONS: Record<Theme, React.ElementType> = { light: Sun, dark: Moon, system: Monitor }
+const THEME_LABELS: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' }
+
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const { isSidebarCollapsed } = useLayout();
+  const { theme, setTheme } = useTheme();
+
+  const cycleTheme = () => {
+    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]
+    setTheme(next)
+  }
+  const ThemeIcon = THEME_ICONS[theme]
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -125,7 +140,7 @@ export const Header: React.FC = () => {
   return (
     <header 
       className={cn(
-        "h-16 fixed top-0 right-0 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex justify-between items-center px-4 md:px-6 z-40 transition-all duration-300 shadow-sm",
+        "h-16 fixed top-0 right-0 bg-card flex justify-between items-center px-4 md:px-6 z-40 transition-all duration-300 shadow-sm",
         isSidebarCollapsed ? 'w-full md:w-[calc(100%-72px)]' : 'w-full md:w-[calc(100%-256px)]'
       )}
     >
@@ -140,7 +155,7 @@ export const Header: React.FC = () => {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[280px] border-r border-border/50">
+          <SheetContent side="left" className="p-0 w-[280px]">
             <SidebarContent />
           </SheetContent>
         </Sheet>
@@ -153,20 +168,20 @@ export const Header: React.FC = () => {
             onChange={e => { setQuery(e.target.value); setIsOpen(true) }}
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-card border border-primary/20 rounded-lg pl-9 pr-10 py-2 text-sm text-foreground placeholder:italic placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:bg-background/90 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200" 
+            className="w-full bg-muted pl-9 pr-10 py-2 text-sm text-foreground placeholder:italic placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:bg-background disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
             placeholder="Search features, DNS records, settings..." 
             type="text"
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:flex items-center gap-0.5 select-none rounded border border-border/70 bg-muted px-1.5 font-mono text-[9px] font-bold text-muted-foreground/80">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:flex items-center gap-0.5 select-none bg-background px-1.5 font-mono text-[9px] font-bold text-muted-foreground/80">
             <span>⌘</span><span>K</span>
           </div>
 
           {isOpen && (
             <div
               ref={dropdownRef}
-              className="absolute top-full left-0 right-0 mt-3 bg-popover border border-border/50 rounded-lg shadow-lg overflow-hidden z-50"
+              className="absolute top-full left-0 right-0 mt-2 bg-popover shadow-lg overflow-hidden z-50"
             >
-              <div className="p-2 border-b border-border/50 bg-muted/5">
+              <div className="p-2 bg-muted/30">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   {filtered.length} {filtered.length === 1 ? 'result' : 'results'} found
                 </p>
@@ -204,7 +219,7 @@ export const Header: React.FC = () => {
                   })
                 )}
               </div>
-              <div className="p-2 border-t border-border/50 bg-muted/5 flex items-center gap-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+              <div className="p-2 bg-muted/30 flex items-center gap-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                 <span>↑↓ <span className="text-foreground">Navigate</span></span>
                 <span>↵ <span className="text-foreground">Open</span></span>
                 <span>esc <span className="text-foreground">Close</span></span>
@@ -215,6 +230,16 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={cycleTheme}
+          title={`Theme: ${THEME_LABELS[theme]}`}
+          className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
+        >
+          <ThemeIcon className="h-4 w-4" />
+        </Button>
+
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
@@ -226,14 +251,14 @@ export const Header: React.FC = () => {
                 </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 mt-2 border-border/50 shadow-lg" align="end">
-              <div className="p-3 border-b border-border/50 flex items-center justify-between bg-muted/5">
+            <PopoverContent className="w-80 p-0 mt-2 shadow-lg" align="end">
+              <div className="p-3 bg-muted/20 flex items-center justify-between">
                 <h4 className="font-bold text-[10px] uppercase tracking-widest text-foreground">Notifications</h4>
                 <Button variant="ghost" size="sm" className="h-auto p-0 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">Mark all as read</Button>
               </div>
               <div className="max-h-[300px] overflow-y-auto">
-                <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer border-b border-border/50">
-                  <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 border border-destructive/20">
+                <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="h-8 w-8 bg-destructive/15 flex items-center justify-center shrink-0">
                     <AlertCircle className="h-4 w-4 text-destructive" />
                   </div>
                   <div className="space-y-1">
@@ -243,7 +268,7 @@ export const Header: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer">
-                  <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                  <div className="h-8 w-8 bg-emerald-500/15 flex items-center justify-center shrink-0">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   </div>
                   <div className="space-y-1">
@@ -253,32 +278,30 @@ export const Header: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="p-2 border-t border-border/50 bg-muted/5">
+              <div className="p-2 bg-muted/20">
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-primary justify-center h-8">View all notifications</Button>
               </div>
             </PopoverContent>
           </Popover>
         </div>
 
-        <div className="h-6 w-[1px] bg-border/50 mx-1 hidden md:block"></div>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-muted/50 h-9 transition-colors border border-transparent hover:border-border/30 rounded-lg">
-              <div className="h-7 w-7 rounded-full bg-primary/5 flex items-center justify-center text-primary border border-primary/10">
+            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-muted h-9 transition-colors">
+              <div className="h-7 w-7 bg-primary/15 flex items-center justify-center text-primary">
                 <UserCircle className="h-5 w-5" />
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden md:block" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 mt-2 border-border/50 shadow-md">
-            <DropdownMenuLabel className="font-normal bg-muted/5">
+          <DropdownMenuContent align="end" className="w-56 mt-2 shadow-md">
+            <DropdownMenuLabel className="font-normal bg-muted/20">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-bold text-foreground leading-none">Enterprise User</p>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">admin@netshield.local</p>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
               <User className="h-3.5 w-3.5" /> Profile
             </DropdownMenuItem>
@@ -288,7 +311,7 @@ export const Header: React.FC = () => {
             <DropdownMenuItem onClick={() => navigate('/cloud-sync')} className="cursor-pointer gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground focus:text-foreground">
               <Cloud className="h-3.5 w-3.5" /> Cloud Sync
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuItem
               className="text-destructive cursor-pointer gap-2 focus:bg-destructive/10 focus:text-destructive text-xs font-bold uppercase tracking-widest"
               onClick={async () => {

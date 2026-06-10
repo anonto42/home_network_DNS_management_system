@@ -22,7 +22,7 @@ export const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
             isSidebarCollapsed ? "md:ml-[72px]" : "md:ml-64"
           )}
         >
-          <div className="container mx-auto p-4 md:p-8 max-w-[1440px]">
+          <div className="p-4 md:p-8">
             {children}
           </div>
         </main>

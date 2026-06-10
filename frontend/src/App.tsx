@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useTheme, type Theme } from './hooks/useTheme'
 import LoginPage from './pages/LoginPage'
 import { apiGet, apiPost, apiPut, apiDelete } from './hooks/api'
 import {
@@ -12,9 +13,12 @@ import {
   Trash2,
   Gauge,
   Globe,
-  ArrowRight,
-  Power
+  Power,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react'
+
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
 import { DashboardLayout } from './components/layout/DashboardLayout'
@@ -426,18 +430,6 @@ const SteeringPage = () => {
           </div>
         </Card>
 
-        <Card className="bg-primary/5 border-primary/20 overflow-hidden relative p-8 md:p-12 shadow-sm">
-          <div className="relative z-10 max-w-2xl space-y-4">
-            <Badge variant="outline" className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary border-primary/30 bg-primary/10">Pro Feature</Badge>
-            <h4 className="text-2xl md:text-3xl font-bold text-foreground">Need geo-aware routing?</h4>
-            <p className="text-muted-foreground text-sm md:text-base leading-relaxed">NetShield Pro enables latency-based steering, failover policies, and multi-region DNS routing for global deployments.</p>
-            <Button className="gap-2 group shadow-sm text-[10px] font-bold uppercase tracking-widest" size="lg">
-              Upgrade to Pro
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </div>
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
-        </Card>
       </div>
     </PageTransition>
   )
@@ -449,7 +441,14 @@ const UPSTREAM_OPTIONS = [
   { label: 'Quad9 (9.9.9.9)', value: '9.9.9.9:53' },
 ]
 
+const THEME_OPTIONS: { label: string; value: Theme; icon: React.ElementType }[] = [
+  { label: 'Light', value: 'light', icon: Sun },
+  { label: 'Dark', value: 'dark', icon: Moon },
+  { label: 'System', value: 'system', icon: Monitor },
+]
+
 const SettingsPage = () => {
+  const { theme, setTheme } = useTheme()
   const [serverName, setServerName] = useState('north-america-east-1')
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [upstream, setUpstream] = useState('1.1.1.1:53')
@@ -483,7 +482,7 @@ const SettingsPage = () => {
 
   return (
     <PageTransition>
-      <div className="max-w-4xl space-y-8">
+      <div className="space-y-8">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Configure your DNS server and security preferences.</p>
@@ -491,7 +490,7 @@ const SettingsPage = () => {
 
         {!loaded ? (
           <div className="grid gap-6">
-            <Card className="shadow-sm border-border/50">
+            <Card className="shadow-sm border border-border">
               <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
               <CardContent className="space-y-4">
                 <Skeleton className="h-10 w-full" />
@@ -501,7 +500,28 @@ const SettingsPage = () => {
           </div>
         ) : (
           <div className="grid gap-6">
-            <Card className="shadow-sm border-border/50">
+            <Card className="shadow-sm border border-border">
+              <CardHeader>
+                <CardTitle className="font-bold tracking-tight text-foreground">Appearance</CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Choose between light, dark, or follow your device setting.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3">
+                  {THEME_OPTIONS.map(({ label, value, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => setTheme(value)}
+                      className={`flex flex-col items-center gap-2 p-4 border transition-colors cursor-pointer ${theme === value ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border border-border">
               <CardHeader>
                 <CardTitle className="font-bold tracking-tight text-foreground">General Configuration</CardTitle>
                 <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Basic node settings and updates.</CardDescription>
@@ -512,9 +532,9 @@ const SettingsPage = () => {
                     <p className="text-sm font-bold text-foreground">Server Name</p>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identify this node in your cluster</p>
                   </div>
-                  <input className="flex h-9 w-full sm:w-64 rounded-md border border-border/50 bg-muted/5 px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-medium text-foreground" value={serverName} onChange={e => setServerName(e.target.value)} />
+                  <input className="flex h-9 w-full sm:w-64 border border-border bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium text-foreground" value={serverName} onChange={e => setServerName(e.target.value)} />
                 </div>
-                <div className="h-[1px] bg-border/50" />
+                <div className="h-[1px] bg-border" />
                 <div className="flex items-center justify-between gap-4">
                   <div className="space-y-0.5">
                     <p className="text-sm font-bold text-foreground">Automatic Updates</p>
@@ -525,36 +545,36 @@ const SettingsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-border/50">
+            <Card className="shadow-sm border border-border">
               <CardHeader>
                 <CardTitle className="font-bold tracking-tight text-foreground">Upstream DNS</CardTitle>
                 <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Select your preferred upstream DNS provider for resolution.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {UPSTREAM_OPTIONS.map((opt) => (
-                    <div key={opt.value} onClick={() => setUpstream(opt.value)} className="flex items-center space-x-3 p-3 border border-border/50 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer group">
-                      <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${upstream === opt.value ? 'bg-primary border-primary shadow-sm' : 'border-border/50 group-hover:border-primary/50'}`}>
-                        {upstream === opt.value && <div className="h-1.5 w-1.5 bg-primary-foreground rounded-full" />}
+                    <div key={opt.value} onClick={() => setUpstream(opt.value)} className={`flex items-center space-x-3 p-3 border transition-colors cursor-pointer ${upstream === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/30'}`}>
+                      <div className={`h-4 w-4 border flex items-center justify-center transition-colors ${upstream === opt.value ? 'bg-primary border-primary' : 'border-border'}`}>
+                        {upstream === opt.value && <div className="h-1.5 w-1.5 bg-primary-foreground" />}
                       </div>
-                      <span className="text-sm font-bold text-foreground opacity-80 group-hover:opacity-100">{opt.label}</span>
+                      <span className="text-sm font-bold text-foreground">{opt.label}</span>
                     </div>
                   ))}
-                  <div onClick={() => setUpstream('custom')} className="flex items-center space-x-3 p-3 border border-border/50 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer group">
-                    <div className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${isCustom ? 'bg-primary border-primary shadow-sm' : 'border-border/50 group-hover:border-primary/50'}`}>
-                      {isCustom && <div className="h-1.5 w-1.5 bg-primary-foreground rounded-full" />}
+                  <div onClick={() => setUpstream('custom')} className={`flex items-center space-x-3 p-3 border transition-colors cursor-pointer ${isCustom ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/30'}`}>
+                    <div className={`h-4 w-4 border flex items-center justify-center transition-colors ${isCustom ? 'bg-primary border-primary' : 'border-border'}`}>
+                      {isCustom && <div className="h-1.5 w-1.5 bg-primary-foreground" />}
                     </div>
-                    <span className="text-sm font-bold text-foreground opacity-80 group-hover:opacity-100">Custom Provider</span>
+                    <span className="text-sm font-bold text-foreground">Custom Provider</span>
                   </div>
                 </div>
                 {isCustom && (
-                  <input className="flex h-9 w-full rounded-md border border-border/50 bg-muted/5 px-3 py-1 text-sm shadow-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" placeholder="e.g. 192.168.1.1:53" value={customUpstream} onChange={e => setCustomUpstream(e.target.value)} />
+                  <input className="flex h-9 w-full border border-border bg-background px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" placeholder="e.g. 192.168.1.1:53" value={customUpstream} onChange={e => setCustomUpstream(e.target.value)} />
                 )}
               </CardContent>
             </Card>
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border/50" onClick={() => { setServerName('north-america-east-1'); setAutoUpdate(true); setUpstream('1.1.1.1:53') }}>Discard Changes</Button>
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border" onClick={() => { setServerName('north-america-east-1'); setAutoUpdate(true); setUpstream('1.1.1.1:53') }}>Discard Changes</Button>
               <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
             </div>
           </div>
@@ -591,7 +611,7 @@ const ProfilePage = () => {
 
   return (
     <PageTransition>
-      <div className="max-w-4xl space-y-8">
+      <div className="space-y-8">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Profile</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Manage your account details and preferences.</p>
@@ -629,7 +649,7 @@ const CloudSyncPage = () => {
   const [autoSync, setAutoSync] = useState(true)
   return (
     <PageTransition>
-      <div className="max-w-4xl space-y-8">
+      <div className="space-y-8">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Cloud Sync</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Synchronize your configuration across nodes and clusters.</p>

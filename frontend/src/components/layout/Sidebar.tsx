@@ -20,7 +20,7 @@ const Logo = ({ collapsed }: { collapsed: boolean }) => (
     "flex items-center transition-all duration-300",
     collapsed ? "justify-center" : "gap-3 overflow-hidden whitespace-nowrap"
   )}>
-    <div className="w-9 h-9 bg-primary flex-shrink-0 flex items-center justify-center rounded-lg shadow-sm">
+    <div className="w-9 h-9 bg-primary flex-shrink-0 flex items-center justify-center shadow-sm">
       <Shield size={20} className="text-primary-foreground" />
     </div>
     {!collapsed && (
@@ -109,7 +109,7 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-background border-r border-border/50 transition-all duration-300 z-50 shadow-sm",
+        "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-card transition-all duration-300 z-50 shadow-md",
         isSidebarCollapsed ? "w-[72px]" : "w-64"
       )}
     >
@@ -118,7 +118,7 @@ export const Sidebar: React.FC = () => {
           variant="outline"
           size="icon"
           onClick={toggleSidebar}
-          className="h-6 w-6 rounded-full shadow-sm bg-background border-border/50 hover:bg-muted"
+          className="h-6 w-6 shadow-sm bg-muted hover:bg-muted/70"
         >
           {isSidebarCollapsed ? <PanelLeftOpen className="h-3 w-3" /> : <PanelLeftClose className="h-3 w-3" />}
         </Button>

@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
       <Card className="w-full max-w-sm shadow-lg border-border/50">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+          <div className="mx-auto mb-4 w-12 h-12 bg-primary flex items-center justify-center shadow-sm">
             <Shield className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-xl font-bold tracking-tight text-foreground">NetShield</CardTitle>

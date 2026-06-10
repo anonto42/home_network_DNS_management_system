@@ -25,53 +25,107 @@ body {
     --font-heading: var(--font-sans);
     --font-sans: 'Inter Variable', sans-serif;
   }
+
+  /* ─── Sharp corners everywhere ───────────────────────── */
   :root {
-    --background: oklch(0.99 0 0);
-    --foreground: oklch(0.15 0 0);
-    --card: oklch(0.96 0 0);
-    --card-foreground: oklch(0.15 0 0);
-    --popover: oklch(0.96 0 0);
-    --popover-foreground: oklch(0.15 0 0);
-    --primary: oklch(0.55 0.18 250);
-    --primary-foreground: oklch(0.99 0 0);
-    --secondary: oklch(0.92 0.01 250);
-    --secondary-foreground: oklch(0.2 0.05 250);
-    --muted: oklch(0.92 0 0);
-    --muted-foreground: oklch(0.45 0 0);
-    --accent: oklch(0.92 0.02 250);
-    --accent-foreground: oklch(0.2 0.05 250);
-    --destructive: oklch(0.6 0.18 25);
-    --border: oklch(0.92 0 0);
-    --input: oklch(0.92 0 0);
-    --ring: oklch(0.55 0.18 250 / 0.3);
-    --radius: 0.25rem;
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --radius: 0rem;
   }
+
+  /* ─── Light theme ────────────────────────────────────────
+     Facebook-style: depth from bg steps, no borders.
+       background  #F0F2F5  page canvas
+       card        #FFFFFF  panels / cards
+       muted       #E4E6EB  chips, subtle fills, table rows
+       input       #E4E6EB  input background
+       border      transparent  (no visible borders)
+  ──────────────────────────────────────────────────────── */
+  :root {
+    /* bg steps */
+    --background:           oklch(0.95 0.004 250);   /* #F0F2F5 blue-tinted grey */
+    --foreground:           oklch(0.10 0    0);       /* near-black text */
+
+    --card:                 oklch(1.00 0    0);       /* pure white cards */
+    --card-foreground:      oklch(0.10 0    0);
+
+    --popover:              oklch(1.00 0    0);
+    --popover-foreground:   oklch(0.10 0    0);
+
+    --primary:              oklch(0.48 0.22 250);     /* blue */
+    --primary-foreground:   oklch(1.00 0    0);
+
+    --secondary:            oklch(0.92 0.01 250);
+    --secondary-foreground: oklch(0.18 0.06 250);
+
+    --muted:                oklch(0.91 0.005 250);    /* #E4E6EB */
+    --muted-foreground:     oklch(0.40 0    0);
+
+    --accent:               oklch(0.91 0.01  250);
+    --accent-foreground:    oklch(0.18 0.06  250);
+
+    --destructive:          oklch(0.54 0.21 25);
+    --destructive-foreground: oklch(1.00 0  0);
+
+    /* No visible borders — depth comes from bg color only */
+    --border:               oklch(0.88 0.005 250);   /* very subtle, almost same as bg */
+    --input:                oklch(0.91 0.005 250);   /* input bg = muted */
+    --ring:                 oklch(0.48 0.22 250 / 0.30);
+
+    --shadow-sm:  0 1px 4px 0 rgb(0 0 0 / 0.08);
+    --shadow:     0 2px 8px 0 rgb(0 0 0 / 0.10);
+  }
+
+  /* ─── Dark theme ─────────────────────────────────────────
+     Facebook dark mode palette — depth from background steps only.
+       Layer 0  background  #18191A  page canvas
+       Layer 1  card        #242526  panels, sidebar, header
+       Layer 2  popover     #3A3B3C  dropdowns, tooltips
+       Layer 3  muted       #3A3B3C  chips, table headers, subtle fills
+       Layer 4  input       #3A3B3C  input backgrounds
+       border   transparent / invisible — no hard borders
+  ──────────────────────────────────────────────────────── */
   .dark {
-    --background: oklch(0.12 0 0);
-    --foreground: oklch(0.98 0 0);
-    --card: oklch(0.18 0 0);
-    --card-foreground: oklch(0.98 0 0);
-    --popover: oklch(0.18 0 0);
-    --popover-foreground: oklch(0.98 0 0);
-    --primary: oklch(0.7 0.12 250);
-    --primary-foreground: oklch(0.12 0 0);
-    --secondary: oklch(0.25 0.02 250);
-    --secondary-foreground: oklch(0.98 0.02 250);
-    --muted: oklch(0.25 0 0);
-    --muted-foreground: oklch(0.65 0 0);
-    --accent: oklch(0.25 0.03 250);
-    --accent-foreground: oklch(0.98 0.03 250);
-    --destructive: oklch(0.5 0.15 25);
-    --border: oklch(0.25 0 0);
-    --input: oklch(0.25 0 0);
-    --ring: oklch(0.7 0.12 250 / 0.4);
+    /* Page canvas — deepest layer */
+    --background:           oklch(0.14 0    0);   /* #18191A */
+    --foreground:           oklch(0.95 0    0);   /* near-white text */
+
+    /* Cards / panels — clearly lifted */
+    --card:                 oklch(0.19 0    0);   /* #242526 */
+    --card-foreground:      oklch(0.95 0    0);
+
+    /* Dropdowns / overlays — one step above card */
+    --popover:              oklch(0.24 0    0);   /* #3A3B3C */
+    --popover-foreground:   oklch(0.95 0    0);
+
+    /* Primary — Facebook blue adapted for dark */
+    --primary:              oklch(0.62 0.18 250);
+    --primary-foreground:   oklch(0.14 0    0);
+
+    --secondary:            oklch(0.24 0.02 250);
+    --secondary-foreground: oklch(0.90 0.02 250);
+
+    /* Muted fills — same tone as popover/input */
+    --muted:                oklch(0.24 0    0);   /* #3A3B3C */
+    --muted-foreground:     oklch(0.60 0    0);
+
+    --accent:               oklch(0.26 0.03 250);
+    --accent-foreground:    oklch(0.90 0.03 250);
+
+    --destructive:          oklch(0.58 0.19 25);
+    --destructive-foreground: oklch(0.95 0  0);
+
+    /* Border: only the faintest step — used for very subtle dividers */
+    --border:               oklch(0.26 0    0);   /* barely visible on card bg */
+    --input:                oklch(0.24 0    0);   /* input bg = muted layer */
+    --ring:                 oklch(0.62 0.18 250 / 0.40);
+
+    --shadow-sm:  0 1px 4px 0  rgb(0 0 0 / 0.50);
+    --shadow:     0 2px 12px 0 rgb(0 0 0 / 0.60);
   }
-  /* Removed global border rule */
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }

@@ -117,7 +117,7 @@ export default function BlocklistManager() {
     ))
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <div className="w-full space-y-8">
       <ConfirmDialog
         open={unblockTarget !== null}
         title="Unblock domain?"

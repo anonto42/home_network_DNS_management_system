@@ -60,53 +60,183 @@ Every query — blocked, allowed, cached, custom — is logged to SQLite and sho
 
 ### Prerequisites
 
+The development environment runs entirely inside Docker. You do not need Go or Node.js installed on your machine.
+
+**For Docker-based workflow (recommended):**
+- Docker 24 or later
+- Docker Compose v2 (`docker compose` — note: no hyphen)
+
+**For building from source without Docker:**
 - Go 1.22 or later
-- Node.js 18+ and npm (only for building the frontend from source)
+- Node.js 18+ and npm
 - Linux/macOS (Windows works but port 53 may need extra steps)
 
-### Build from source
+---
+
+### Quick start with Docker (recommended)
+
+This is how the project is developed. Everything — backend hot-reload, frontend HMR, linting, and production builds — runs in containers.
+
+#### 1. Clone and set up
 
 ```bash
 git clone <repo-url>
-cd dns
+cd home_network_DNS_management_system
 
-# Build the frontend into the binary
+# One-time setup: wires git hooks and pre-builds the check images
+make setup
+```
+
+#### 2. Start the development stack
+
+```bash
+make dev
+```
+
+This starts two containers:
+
+| Container | What it runs | URL |
+|-----------|-------------|-----|
+| `dns-server-dev` | Go backend with **Air hot-reload** — recompiles on every `.go` save | `http://localhost:8080` |
+| `frontend-1` | React + Vite with **HMR** — updates instantly on every `.tsx` save | `http://localhost:5173` |
+
+DNS listens on **UDP port 5354** on the host (mapped to 5353 inside the container). Port 5354 is used in dev to avoid conflicts with system services that hold 53 and 5353.
+
+Open **http://localhost:5173** in your browser. The Vite dev server proxies all `/api` requests to the backend automatically.
+
+#### 3. Useful dev commands
+
+```bash
+make logs        # tail live logs from both containers
+make dev-down    # stop the dev stack
+make test        # run Go lint (golangci-lint) + unit tests + TypeScript type-check
+make test-backend   # Go checks only
+make test-frontend  # TypeScript type-check only
+```
+
+#### 4. What hot-reload covers
+
+- **Backend:** [Air](https://github.com/air-verse/air) watches `backend/` and recompiles on every `.go` change. The new binary starts automatically — no manual restart.
+- **Frontend:** Vite HMR pushes React component updates to the browser instantly — no page reload needed.
+
+---
+
+### Production build with Docker
+
+Builds a single minimal Alpine image (~20 MB) with the Go binary and the compiled React frontend embedded inside it.
+
+```bash
+# Build the production image
+make build
+
+# Start the production stack (detached, restarts on failure)
+make up
+# → Dashboard at http://localhost:8080
+# → DNS on port 53 (host networking)
+
+# Stop
+make down
+```
+
+The production container runs as a non-root user. The binary receives `cap_net_bind_service` so it can bind port 53 without root.
+
+Data is persisted in a Docker named volume (`dns-data`). The database survives container restarts and image rebuilds.
+
+```bash
+# Rebuild from scratch and restart
+make restart
+
+# View production logs
+docker compose -f docker/docker-compose.yml logs -f
+
+# Remove all containers AND the data volume (destructive — deletes all logs/records)
+make clean-all
+```
+
+#### Override production flags
+
+Edit `docker/docker-compose.yml` and uncomment the `command:` line:
+
+```yaml
+command: ["./dns-server", "--upstream", "9.9.9.9:53", "--log-prune", "168h"]
+```
+
+Then `make restart` to apply.
+
+---
+
+### Build from source (no Docker)
+
+Only needed if you cannot use Docker.
+
+```bash
+git clone <repo-url>
+cd home_network_DNS_management_system
+
+# 1. Build the frontend
 cd frontend
 npm install
-npm run build
+npm run build        # outputs to frontend/dist/
 cd ..
 
-# Build the Go binary with embedded frontend
+# 2. Build the Go binary with the frontend embedded
 cd backend
 go build -tags embed -o ../netshield-dns ./cmd/dns-server
 cd ..
 
-# Run it (port 53 requires root)
+# 3. Run (port 53 requires root or cap_net_bind_service)
 sudo ./netshield-dns
 ```
 
-### Run in development mode (separate processes)
+#### Run in development mode (no Docker)
 
 ```bash
-# Terminal 1 — backend only
+# Terminal 1 — backend on a high port (no root needed)
 cd backend
-sudo go run ./cmd/dns-server --http-port 8080 --dns-port 53
+go run ./cmd/dns-server \
+  --http-port 8080 \
+  --dns-port  5353 \
+  --log-level debug
 
 # Terminal 2 — frontend dev server
 cd frontend
+npm install
 npm run dev
 # Open http://localhost:5173
+# Vite proxies /api → http://localhost:8080 automatically
 ```
+
+---
+
+### Docker file layout
+
+```
+docker/
+├── Dockerfile              # Multi-stage: frontend-builder → builder → dev → test → production
+├── docker-compose.yml      # Production stack (host networking, port 53)
+├── docker-compose.dev.yml  # Dev stack (Air + Vite HMR, ports 8080 / 5173 / 5354)
+└── docker-compose.test.yml # CI/check stack (golangci-lint + tsc)
+```
+
+| Stage | Base image | Purpose |
+|-------|-----------|---------|
+| `frontend-builder` | `node:22-alpine` | `npm run build` — compiles React to `dist/` |
+| `builder` | `golang:1.25-alpine` | `go build -tags embed` — embeds `dist/` into binary |
+| `dev` | `golang:1.25-alpine` | Air hot-reload; source mounted as volume |
+| `test` | `golang:1.25-alpine` | golangci-lint + go test; used by pre-commit hook |
+| `production` | `alpine:3.20` | Final image — binary only, ~20 MB |
+
+---
 
 ### First run output
 
 ```
-INFO listening protocol=UDP port=53
-INFO listening protocol=TCP port=53
-INFO listening protocol=HTTP port=8080
+{"level":"INFO","msg":"listening","protocol":"UDP","port":53}
+{"level":"INFO","msg":"listening","protocol":"TCP","port":53}
+{"level":"INFO","msg":"listening","protocol":"HTTP","port":8080}
 ```
 
-Open **http://localhost:8080** (or http://your-server-ip:8080 from another device) and log in.
+Open **http://localhost:8080** (production) or **http://localhost:5173** (dev) and log in.
 
 ---
 
