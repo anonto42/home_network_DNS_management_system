@@ -1,15 +1,17 @@
-import { useState } from 'react'
-import { 
-  Activity, 
-  Ban, 
-  Percent, 
+import { useState, useCallback } from 'react'
+import {
+  Activity,
+  Ban,
+  Percent,
   List,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react'
 import { getStatus, type Status } from '../api'
 import { usePolling } from '../../../hooks/usePolling'
+import { useWindowFocus } from '../../../hooks/useWindowFocus'
 import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface StatCardProps {
   label: string
@@ -17,15 +19,35 @@ interface StatCardProps {
   icon: React.ElementType
   trend?: string
   trendType?: 'up' | 'down' | 'neutral'
+  loading?: boolean
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, trend, trendType = 'neutral' }) => {
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, trend, trendType = 'neutral', loading }) => {
   const trendColor = trendType === 'up'
     ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
     : trendType === 'down'
       ? 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20'
       : 'text-muted-foreground bg-muted/50 border-border/30'
   const TrendIcon = trendType === 'up' ? ArrowUpRight : trendType === 'down' ? ArrowDownRight : null
+
+  if (loading) {
+    return (
+      <Card className="overflow-hidden shadow-sm border-border/50">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between space-x-4">
+            <div className="flex items-center space-x-4">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-7 w-16" />
+              </div>
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="overflow-hidden shadow-sm border-border/50 transition-all duration-300 hover:shadow-md hover:border-primary/20 hover:scale-[1.01] hover:-translate-y-0.5">
@@ -63,15 +85,22 @@ export default function StatsCards() {
     cache_misses: 0,
     uptime_seconds: 0,
   })
+  const [loading, setLoading] = useState(true)
 
-  usePolling(async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const data = await getStatus()
-      if (data) setStats(data)
-    } catch (error) {
-      console.error('Failed to fetch stats:', error)
+      if (data) {
+        setStats(data)
+        setLoading(false)
+      }
+    } catch {
+      setLoading(false)
     }
-  }, 3000)
+  }, [])
+
+  usePolling(fetchStats, 3000)
+  useWindowFocus(fetchStats)
 
   const qf = stats.queries_forwarded ?? 0
   const qb = stats.queries_blocked ?? 0
@@ -81,10 +110,10 @@ export default function StatsCards() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <StatCard label="Total Queries"      value={qf.toLocaleString()} icon={Activity} trend="+12%"          trendType="up" />
-      <StatCard label="Queries Blocked"    value={qb.toLocaleString()} icon={Ban}      trend="+4.2%"         trendType="up" />
-      <StatCard label="Percent Blocked"    value={`${percentBlocked}%`} icon={Percent} trend="Stable"        trendType="neutral" />
-      <StatCard label="Domains on Adlist"  value={cs.toLocaleString()} icon={List}     trend="Updated 2h ago" trendType="neutral" />
+      <StatCard loading={loading} label="Total Queries"      value={qf.toLocaleString()} icon={Activity} trend="+12%"          trendType="up" />
+      <StatCard loading={loading} label="Queries Blocked"    value={qb.toLocaleString()} icon={Ban}      trend="+4.2%"         trendType="up" />
+      <StatCard loading={loading} label="Percent Blocked"    value={`${percentBlocked}%`} icon={Percent} trend="Stable"        trendType="neutral" />
+      <StatCard loading={loading} label="Domains on Adlist"  value={cs.toLocaleString()} icon={List}     trend="Updated 2h ago" trendType="neutral" />
     </div>
   )
 }

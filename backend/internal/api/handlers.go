@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/sohidul/dns-server/internal/db"
@@ -272,5 +273,93 @@ func (h *Handler) RemoveFromBlocklist(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.db.RemoveFromBlocklist(body.Domain)
+	respond(w, 200, map[string]bool{"ok": true})
+}
+
+// GetLogs with optional ?limit=N&action=blocked&domain=example query params
+func (h *Handler) GetLogsFiltered(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	action := r.URL.Query().Get("action")
+	domain := r.URL.Query().Get("domain")
+	respond(w, 200, h.db.GetLogsFiltered(limit, action, domain))
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token != "" {
+		h.db.DeleteSession(token)
+	}
+	respond(w, 200, map[string]bool{"ok": true})
+}
+
+func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body models.ChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	email, _ := r.Context().Value(userKey).(string)
+	if !h.db.VerifyUser(email, body.CurrentPassword) {
+		respond(w, 401, map[string]string{"error": "current password is incorrect"})
+		return
+	}
+	if len(body.NewPassword) < 8 {
+		respond(w, 400, map[string]string{"error": "new password must be at least 8 characters"})
+		return
+	}
+	if err := h.db.ChangePassword(email, body.NewPassword); err != nil {
+		slog.Error("change password failed", "error", err)
+		respond(w, 500, map[string]string{"error": "failed to change password"})
+		return
+	}
+	respond(w, 200, map[string]bool{"ok": true})
+}
+
+func (h *Handler) GetSteeringRules(w http.ResponseWriter, r *http.Request) {
+	respond(w, 200, h.db.GetSteeringRules())
+}
+
+func (h *Handler) AddSteeringRule(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body models.AddSteeringRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	if body.Name == "" {
+		respond(w, 400, map[string]string{"error": "name is required"})
+		return
+	}
+	id, err := h.db.AddSteeringRule(body)
+	if err != nil {
+		slog.Error("add steering rule failed", "error", err)
+		respond(w, 500, map[string]string{"error": "failed to add rule"})
+		return
+	}
+	respond(w, 200, map[string]any{"ok": true, "id": id})
+}
+
+func (h *Handler) UpdateSteeringRule(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body models.UpdateSteeringRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	h.db.UpdateSteeringRuleEnabled(body.ID, body.Enabled)
+	respond(w, 200, map[string]bool{"ok": true})
+}
+
+func (h *Handler) DeleteSteeringRule(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body models.DeleteSteeringRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	h.db.DeleteSteeringRule(body.ID)
 	respond(w, 200, map[string]bool{"ok": true})
 }

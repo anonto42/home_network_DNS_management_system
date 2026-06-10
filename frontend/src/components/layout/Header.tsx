@@ -289,7 +289,20 @@ export const Header: React.FC = () => {
               <Cloud className="h-3.5 w-3.5" /> Cloud Sync
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border/50" />
-            <DropdownMenuItem className="text-destructive cursor-pointer gap-2 focus:bg-destructive/10 focus:text-destructive text-xs font-bold uppercase tracking-widest">
+            <DropdownMenuItem
+              className="text-destructive cursor-pointer gap-2 focus:bg-destructive/10 focus:text-destructive text-xs font-bold uppercase tracking-widest"
+              onClick={async () => {
+                const token = localStorage.getItem('auth_token')
+                if (token) {
+                  await fetch('/api/session', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                  }).catch(() => {})
+                }
+                localStorage.removeItem('auth_token')
+                navigate('/login')
+              }}
+            >
               <LogOut className="h-3.5 w-3.5" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

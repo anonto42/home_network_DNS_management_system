@@ -64,3 +64,40 @@ type AddBlockRequest struct {
 type RemoveBlockRequest struct {
 	Domain string `json:"domain" example:"ads.example.com" binding:"required"`
 }
+
+// SteeringRule represents a persistent DNS traffic-steering rule.
+type SteeringRule struct {
+	ID             int64  `json:"id"`
+	Name           string `json:"name"`
+	ConditionType  string `json:"condition_type"`  // Domain | Client IP | Query Type | Time Range
+	ConditionValue string `json:"condition_value"` // e.g. *.corp.internal
+	ActionType     string `json:"action_type"`     // Forward | Block | Redirect
+	ActionTarget   string `json:"action_target"`   // IP / upstream addr, empty if Block
+	Priority       int    `json:"priority"`
+	Enabled        bool   `json:"enabled"`
+}
+
+type AddSteeringRuleRequest struct {
+	Name           string `json:"name"`
+	ConditionType  string `json:"condition_type"`
+	ConditionValue string `json:"condition_value"`
+	ActionType     string `json:"action_type"`
+	ActionTarget   string `json:"action_target"`
+	Priority       int    `json:"priority"`
+	Enabled        bool   `json:"enabled"`
+}
+
+type UpdateSteeringRuleRequest struct {
+	ID      int64 `json:"id"`
+	Enabled bool  `json:"enabled"`
+}
+
+type DeleteSteeringRuleRequest struct {
+	ID int64 `json:"id"`
+}
+
+// ChangePasswordRequest is the body for changing the admin password.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}

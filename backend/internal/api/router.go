@@ -16,7 +16,7 @@ func RegisterRoutes(r chi.Router, database *db.DB, dnsHandler *dns.Handler) {
 		r.Use(Auth(database))
 
 		r.Get("/status", h.GetStatus)
-		r.Get("/logs", h.GetLogs)
+		r.Get("/logs", h.GetLogsFiltered)
 		r.Delete("/logs", h.ClearLogs)
 		r.Get("/records", h.GetRecords)
 		r.Post("/records", h.AddRecord)
@@ -26,5 +26,11 @@ func RegisterRoutes(r chi.Router, database *db.DB, dnsHandler *dns.Handler) {
 		r.Delete("/blocklist", h.RemoveFromBlocklist)
 		r.Get("/settings", h.GetSettings)
 		r.Put("/settings", h.SaveSettings)
+		r.Delete("/session", h.Logout)
+		r.Put("/password", h.ChangePassword)
+		r.Get("/steering", h.GetSteeringRules)
+		r.Post("/steering", h.AddSteeringRule)
+		r.Put("/steering", h.UpdateSteeringRule)
+		r.Delete("/steering", h.DeleteSteeringRule)
 	})
 }

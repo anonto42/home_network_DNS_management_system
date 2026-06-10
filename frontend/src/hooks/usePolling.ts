@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export function usePolling(callback: () => void, intervalMs: number) {
+export function usePolling(callback: () => void, intervalMs: number, deps: unknown[] = []) {
   const saved = useRef(callback)
 
   useEffect(() => {
@@ -11,5 +11,6 @@ export function usePolling(callback: () => void, intervalMs: number) {
     saved.current()
     const id = setInterval(() => saved.current(), intervalMs)
     return () => clearInterval(id)
-  }, [intervalMs])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intervalMs, ...deps])
 }

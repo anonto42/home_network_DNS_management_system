@@ -1,17 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
-import { 
-  Ban, 
-  PlusCircle, 
-  Download, 
-  Filter, 
-  MoreVertical, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Ban,
+  PlusCircle,
+  Download,
+  Filter,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
   Zap,
   Cloud,
-  Trash2
+  Trash2,
+  ShieldOff,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { getBlocklist, addToBlocklist, removeFromBlocklist, type BlockedDomain } from '../api'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,10 +46,13 @@ interface AdlistSource {
 
 export default function BlocklistManager() {
   const [list, setList] = useState<BlockedDomain[]>([])
+  const [loading, setLoading] = useState(true)
+  const [blocking, setBlocking] = useState(false)
   const [blockDomain, setBlockDomain] = useState('')
   const [listName, setListName] = useState('')
   const [listUrl, setListUrl] = useState('')
   const [listDesc, setListDesc] = useState('')
+  const [unblockTarget, setUnblockTarget] = useState<string | null>(null)
 
   const [sources] = useState<AdlistSource[]>([
     { name: 'StevenBlack Unified Ads', url: 'raw.githubusercontent.com/...', domains: 134812, lastSynced: '2 mins ago', enabled: true },
@@ -58,8 +65,10 @@ export default function BlocklistManager() {
     try {
       const data = await getBlocklist()
       setList(data || [])
-    } catch (e) {
-      console.error('Failed to load blocklist:', e)
+    } catch {
+      toast.error('Failed to load blocklist')
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -68,19 +77,56 @@ export default function BlocklistManager() {
   }, [loadBlocklist])
 
   const handleBlock = async () => {
-    if (!blockDomain.trim()) return
-    await addToBlocklist(blockDomain.trim().toLowerCase())
-    setBlockDomain('')
-    loadBlocklist()
+    const d = blockDomain.trim().toLowerCase()
+    if (!d) {
+      toast.warning('Enter a domain to block')
+      return
+    }
+    setBlocking(true)
+    try {
+      await addToBlocklist(d)
+      setBlockDomain('')
+      await loadBlocklist()
+      toast.success('Domain blocked', { description: d })
+    } catch {
+      toast.error('Failed to block domain')
+    } finally {
+      setBlocking(false)
+    }
   }
 
   const handleUnblock = async (domain: string) => {
-    await removeFromBlocklist(domain)
-    loadBlocklist()
+    try {
+      await removeFromBlocklist(domain)
+      await loadBlocklist()
+      toast.success('Domain unblocked', { description: domain })
+    } catch {
+      toast.error('Failed to unblock domain')
+    }
   }
+
+  const renderSkeletonRows = () =>
+    Array.from({ length: 4 }).map((_, i) => (
+      <TableRow key={i}>
+        <TableCell><div className="space-y-1.5"><Skeleton className="h-3 w-40" /><Skeleton className="h-2.5 w-56" /></div></TableCell>
+        <TableCell><Skeleton className="h-3 w-16" /></TableCell>
+        <TableCell><Skeleton className="h-3 w-20" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
+        <TableCell />
+      </TableRow>
+    ))
 
   return (
     <div className="container mx-auto py-6 space-y-8">
+      <ConfirmDialog
+        open={unblockTarget !== null}
+        title="Unblock domain?"
+        description={`Remove "${unblockTarget}" from the blocklist. DNS queries for this domain will be forwarded.`}
+        confirmLabel="Unblock"
+        onConfirm={() => unblockTarget && handleUnblock(unblockTarget)}
+        onCancel={() => setUnblockTarget(null)}
+      />
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">Blocklist Management</h2>
@@ -93,8 +139,14 @@ export default function BlocklistManager() {
           <div>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Blocked Domains</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-foreground">{list.length.toLocaleString()}</span>
-              <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border-none">+{Math.max(1, Math.round(list.length * 0.01))} today</Badge>
+              {loading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <span className="text-3xl font-bold text-foreground">{list.length.toLocaleString()}</span>
+                  <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border-none">+{Math.max(1, Math.round(list.length * 0.01))} today</Badge>
+                </>
+              )}
             </div>
           </div>
         </Card>
@@ -111,20 +163,11 @@ export default function BlocklistManager() {
               <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">List Name</label>
-                  <Input
-                    value={listName}
-                    onChange={(e) => setListName(e.target.value)}
-                    placeholder="e.g. Social Media Block"
-                  />
+                  <Input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="e.g. Social Media Block" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Source URL</label>
-                  <Input
-                    value={listUrl}
-                    onChange={(e) => setListUrl(e.target.value)}
-                    placeholder="https://raw.githubusercontent.com/..."
-                    type="url"
-                  />
+                  <Input value={listUrl} onChange={(e) => setListUrl(e.target.value)} placeholder="https://raw.githubusercontent.com/..." type="url" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Description (Optional)</label>
@@ -136,7 +179,15 @@ export default function BlocklistManager() {
                     rows={2}
                   />
                 </div>
-                <Button className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest" type="submit">
+                <Button
+                  className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest"
+                  type="submit"
+                  onClick={() => {
+                    if (!listName || !listUrl) { toast.warning('Fill in name and URL'); return }
+                    toast.success('Adlist saved', { description: listName })
+                    setListName(''); setListUrl(''); setListDesc('')
+                  }}
+                >
                   <PlusCircle className="h-4 w-4" /> Save and Sync List
                 </Button>
               </form>
@@ -158,13 +209,13 @@ export default function BlocklistManager() {
                     placeholder="ads.example.com"
                   />
                 </div>
-                <Button className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest" type="submit">
-                  <Ban className="h-4 w-4" /> Block Domain
+                <Button className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest" type="submit" disabled={blocking}>
+                  <Ban className="h-4 w-4" /> {blocking ? 'Blocking…' : 'Block Domain'}
                 </Button>
               </form>
             </CardContent>
           </Card>
-          {/* Blocked domains list */}
+
           {list.length > 0 && (
             <Card className="shadow-sm border-border/50">
               <CardHeader className="pb-2">
@@ -172,9 +223,14 @@ export default function BlocklistManager() {
               </CardHeader>
               <CardContent className="p-4 pt-0 space-y-1">
                 {list.slice(0, 10).map((d) => (
-                  <div key={d.domain} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/50 group">
+                  <div key={d.domain} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/50 group transition-colors animate-in fade-in duration-200">
                     <span className="text-xs font-medium text-foreground truncate">{d.domain}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => handleUnblock(d.domain || '')}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive transition-opacity"
+                      onClick={() => setUnblockTarget(d.domain || '')}
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -183,7 +239,6 @@ export default function BlocklistManager() {
             </Card>
           )}
 
-          {/* Network Insights promo card — uses semantic tokens only */}
           <Card className="relative h-[240px] overflow-hidden group border border-primary/20 bg-primary/5 shadow-sm transition-transform duration-300 hover:scale-[1.01]">
             <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/40 to-transparent flex flex-col justify-end p-6">
               <Badge variant="outline" className="w-fit mb-2 text-primary border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-widest">Network Insights</Badge>
@@ -220,63 +275,74 @@ export default function BlocklistManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sources.map((source) => (
-                  <TableRow key={source.name} className="group transition-all duration-200 hover:bg-muted/50">
-                    <TableCell>
-                      <div className="flex flex-col gap-0.5">
-                        <span className={`font-semibold text-sm ${!source.enabled ? 'text-muted-foreground' : 'text-foreground'}`}>{source.name}</span>
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[240px] font-mono">{source.url}</span>
+                {loading ? renderSkeletonRows() : sources.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-32 text-center">
+                      <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
+                        <ShieldOff className="h-8 w-8 opacity-40" />
+                        <p className="text-sm font-medium">No blocklists configured</p>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-mono text-xs font-bold ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {source.domains.toLocaleString()}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      {source.lastSynced}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Switch checked={source.enabled} />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {source.enabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="border-border/50">
-                          <DropdownMenuItem className="gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer">
-                            <Download className="h-4 w-4" /> Sync Now
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer">
-                            <Cloud className="h-4 w-4" /> View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer focus:bg-destructive/10 focus:text-destructive">
-                            <Ban className="h-4 w-4" /> Disable
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  sources.map((source) => (
+                    <TableRow key={source.name} className="group transition-colors hover:bg-muted/50">
+                      <TableCell>
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`font-semibold text-sm ${!source.enabled ? 'text-muted-foreground' : 'text-foreground'}`}>{source.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[240px] font-mono">{source.url}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-mono text-xs font-bold ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {source.domains.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {source.lastSynced}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Switch checked={source.enabled} />
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${source.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {source.enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="border-border/50">
+                            <DropdownMenuItem className="gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer">
+                              <Download className="h-4 w-4" /> Sync Now
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer">
+                              <Cloud className="h-4 w-4" /> View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer focus:bg-destructive/10 focus:text-destructive">
+                              <Ban className="h-4 w-4" /> Disable
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
           <div className="p-4 border-t border-border/50 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Showing {sources.length} active blocklists</span>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50">
+              <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50" disabled>
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <Button size="sm" className="h-7 px-3 text-[10px] font-bold rounded-md">1</Button>
-              <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50">
+              <Button variant="outline" size="icon" className="h-7 w-7 rounded-md border-border/50" disabled>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>

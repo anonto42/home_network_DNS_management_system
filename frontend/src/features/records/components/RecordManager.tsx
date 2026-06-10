@@ -1,19 +1,21 @@
-import { useState, useEffect } from 'react'
-import { 
-  PlusCircle, 
-  Network, 
-  CheckCircle2, 
-  AlertCircle, 
-  Filter, 
-  Download, 
-  Copy, 
-  Pencil, 
-  Trash2, 
-  ChevronLeft, 
-  ChevronRight, 
-  ArrowRight 
+import { useState, useEffect, useCallback } from 'react'
+import {
+  PlusCircle,
+  Network,
+  CheckCircle2,
+  AlertCircle,
+  Filter,
+  Download,
+  Copy,
+  Pencil,
+  Trash2,
+  ServerOff,
+  ArrowRight
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { getRecords, addRecord, deleteRecord } from '../api'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,11 +30,11 @@ import {
 } from '@/components/ui/table'
 
 const recordTypeStyles: Record<string, string> = {
-  A: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20',
-  CNAME: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
+  A:    'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20',
+  CNAME:'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
   AAAA: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20',
-  MX: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
-  TXT: 'bg-muted/50 text-muted-foreground border border-border/50',
+  MX:   'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
+  TXT:  'bg-muted/50 text-muted-foreground border border-border/50',
 }
 
 function getTypeLabel(ip: string): string {
@@ -43,41 +45,86 @@ function getTypeLabel(ip: string): string {
 
 export default function RecordManager() {
   const [records, setRecords] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
   const [domain, setDomain] = useState('')
   const [ip, setIp] = useState('')
   const [recordType, setRecordType] = useState('A (IPv4 Address)')
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  useEffect(() => {
-    getRecords().then((data) => setRecords(data || {})).catch((e) => console.error('Failed to load records:', e))
-  }, [])
-
-  const handleAdd = async () => {
-    if (!domain || !ip) return
+  const loadRecords = useCallback(async () => {
     try {
-      await addRecord(domain, ip)
       const data = await getRecords()
       setRecords(data || {})
+    } catch {
+      toast.error('Failed to load records')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadRecords()
+  }, [loadRecords])
+
+  const handleAdd = async () => {
+    if (!domain.trim() || !ip.trim()) {
+      toast.warning('Please fill in all fields')
+      return
+    }
+    setAdding(true)
+    try {
+      await addRecord(domain.trim(), ip.trim())
+      await loadRecords()
       setDomain('')
       setIp('')
-    } catch (e) {
-      console.error('Failed to add record:', e)
+      toast.success('Record added', { description: `${domain} → ${ip}` })
+    } catch {
+      toast.error('Failed to add record')
+    } finally {
+      setAdding(false)
     }
   }
 
   const handleDelete = async (d: string) => {
     try {
       await deleteRecord(d)
-      const data = await getRecords()
-      setRecords(data || {})
-    } catch (e) {
-      console.error('Failed to delete record:', e)
+      await loadRecords()
+      toast.success('Record deleted', { description: d })
+    } catch {
+      toast.error('Failed to delete record')
     }
+  }
+
+  const handleCopy = (val: string) => {
+    navigator.clipboard.writeText(val).then(() => toast.success('Copied to clipboard'))
   }
 
   const entries = Object.entries(records || {})
 
+  const renderSkeletonRows = () =>
+    Array.from({ length: 4 }).map((_, i) => (
+      <TableRow key={i}>
+        <TableCell><Skeleton className="h-5 w-12 rounded-full" /></TableCell>
+        <TableCell><Skeleton className="h-3 w-36" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-28 rounded" /></TableCell>
+        <TableCell><Skeleton className="h-3 w-12" /></TableCell>
+        <TableCell className="text-right"><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
+      </TableRow>
+    ))
+
   return (
     <div className="container mx-auto py-6 space-y-8">
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete DNS record?"
+        description={`Remove "${deleteTarget}" from local records. DNS queries for this domain will fall through to upstream.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Local DNS Records</h2>
         <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Manage authoritative records for your local network environment.</p>
@@ -99,7 +146,7 @@ export default function RecordManager() {
                 <select
                   value={recordType}
                   onChange={(e) => setRecordType(e.target.value)}
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium"
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors font-medium"
                 >
                   <option>A (IPv4 Address)</option>
                   <option>AAAA (IPv6 Address)</option>
@@ -114,6 +161,7 @@ export default function RecordManager() {
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder="e.g. internal.app.local"
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
                 />
               </div>
               <div className="space-y-2">
@@ -122,6 +170,7 @@ export default function RecordManager() {
                   value={ip}
                   onChange={(e) => setIp(e.target.value)}
                   placeholder="e.g. 192.168.1.50"
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
                 />
               </div>
             </div>
@@ -129,15 +178,14 @@ export default function RecordManager() {
               <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border/50" onClick={() => { setDomain(''); setIp('') }}>
                 Cancel
               </Button>
-              <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm" onClick={handleAdd}>
-                Add Record
+              <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm" onClick={handleAdd} disabled={adding}>
+                {adding ? 'Adding…' : 'Add Record'}
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-          {/* Stats promo card — semantic tokens only */}
           <Card className="bg-primary/5 border-primary/20 shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
             <CardContent className="p-6 flex flex-col justify-between h-full min-h-[140px]">
               <div className="p-2 w-fit bg-primary/10 rounded-lg border border-primary/20 shadow-sm">
@@ -199,10 +247,18 @@ export default function RecordManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.length === 0 ? (
+              {loading ? (
+                renderSkeletonRows()
+              ) : entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground text-sm font-medium">
-                    No custom records yet.
+                  <TableCell colSpan={5} className="h-32 text-center">
+                    <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
+                      <ServerOff className="h-8 w-8 opacity-40" />
+                      <div>
+                        <p className="text-sm font-medium">No custom records yet</p>
+                        <p className="text-xs opacity-70 mt-1">Add a record above to get started</p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -210,7 +266,7 @@ export default function RecordManager() {
                   const type = getTypeLabel(val)
                   const style = recordTypeStyles[type] || recordTypeStyles.TXT
                   return (
-                    <TableRow key={d} className="group transition-all duration-200 hover:bg-muted/50 hover:shadow-sm">
+                    <TableRow key={d} className="group transition-colors hover:bg-muted/50 animate-in fade-in slide-in-from-bottom-1 duration-200">
                       <TableCell>
                         <Badge className={`font-bold text-[9px] px-2 py-0 border-none ${style}`}>{type}</Badge>
                       </TableCell>
@@ -220,7 +276,7 @@ export default function RecordManager() {
                       <TableCell>
                         <div className="flex items-center gap-2 group/val">
                           <code className="bg-muted px-2 py-0.5 rounded text-xs font-medium border border-border/50">{val}</code>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/val:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/val:opacity-100 transition-opacity" onClick={() => handleCopy(val)}>
                             <Copy className="h-3 w-3 text-muted-foreground" />
                           </Button>
                         </div>
@@ -231,7 +287,7 @@ export default function RecordManager() {
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(d)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget(d)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -245,7 +301,6 @@ export default function RecordManager() {
         </div>
       </Card>
 
-      {/* Pro upsell card — semantic tokens only */}
       <Card className="bg-primary/5 border-primary/20 overflow-hidden relative p-8 md:p-12 shadow-sm">
         <div className="relative z-10 max-w-2xl space-y-4">
           <Badge variant="outline" className="mb-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary border-primary/30 bg-primary/10">Pro Feature</Badge>

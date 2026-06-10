@@ -87,6 +87,16 @@ func Open(path string) (*DB, error) {
 		"CREATE TABLE IF NOT EXISTS query_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, domain TEXT, client_ip TEXT, action TEXT)",
 		"CREATE TABLE IF NOT EXISTS custom_records (domain TEXT PRIMARY KEY, ip TEXT)",
 		"CREATE TABLE IF NOT EXISTS blocklist (domain TEXT PRIMARY KEY, added_at TEXT, wildcard INTEGER DEFAULT 0)",
+		`CREATE TABLE IF NOT EXISTS steering_rules (
+			id       INTEGER PRIMARY KEY AUTOINCREMENT,
+			name     TEXT NOT NULL,
+			condition_type  TEXT NOT NULL,
+			condition_value TEXT NOT NULL,
+			action_type     TEXT NOT NULL,
+			action_target   TEXT NOT NULL DEFAULT '',
+			priority        INTEGER NOT NULL DEFAULT 0,
+			enabled         INTEGER NOT NULL DEFAULT 1
+		)`,
 	}
 	for _, q := range queries {
 		if _, err := conn.Exec(q); err != nil {
@@ -379,6 +389,105 @@ func (db *DB) GetSettings() map[string]string {
 		}
 	}
 	return s
+}
+
+// GetLogs returns logs with optional filtering by action and domain substring,
+// and supports a configurable limit (0 = use defaultLimit).
+func (db *DB) GetLogsFiltered(limit int, action, domain string) []models.QueryLog {
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	query := "SELECT id, timestamp, domain, client_ip, action FROM query_logs WHERE 1=1"
+	args := []any{}
+	if action != "" {
+		query += " AND action = ?"
+		args = append(args, action)
+	}
+	if domain != "" {
+		query += " AND domain LIKE ?"
+		args = append(args, "%"+domain+"%")
+	}
+	query += " ORDER BY id DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := db.conn.Query(query, args...)
+	if err != nil {
+		return []models.QueryLog{}
+	}
+	defer rows.Close()
+
+	logs := make([]models.QueryLog, 0)
+	for rows.Next() {
+		var l models.QueryLog
+		var ts string
+		if err := rows.Scan(&l.ID, &ts, &l.Domain, &l.ClientIP, &l.Action); err != nil {
+			continue
+		}
+		if t, err := time.Parse(time.RFC3339, ts); err == nil {
+			l.Timestamp = t
+		}
+		logs = append(logs, l)
+	}
+	return logs
+}
+
+func (db *DB) GetSteeringRules() []models.SteeringRule {
+	rows, err := db.conn.Query("SELECT id, name, condition_type, condition_value, action_type, action_target, priority, enabled FROM steering_rules ORDER BY priority ASC, id ASC")
+	if err != nil {
+		return []models.SteeringRule{}
+	}
+	defer rows.Close()
+	rules := make([]models.SteeringRule, 0)
+	for rows.Next() {
+		var r models.SteeringRule
+		var enabled int
+		if err := rows.Scan(&r.ID, &r.Name, &r.ConditionType, &r.ConditionValue, &r.ActionType, &r.ActionTarget, &r.Priority, &enabled); err != nil {
+			continue
+		}
+		r.Enabled = enabled != 0
+		rules = append(rules, r)
+	}
+	return rules
+}
+
+func (db *DB) AddSteeringRule(r models.AddSteeringRuleRequest) (int64, error) {
+	enabled := 0
+	if r.Enabled {
+		enabled = 1
+	}
+	res, err := db.conn.Exec(
+		"INSERT INTO steering_rules (name, condition_type, condition_value, action_type, action_target, priority, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		r.Name, r.ConditionType, r.ConditionValue, r.ActionType, r.ActionTarget, r.Priority, enabled,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+func (db *DB) UpdateSteeringRuleEnabled(id int64, enabled bool) {
+	e := 0
+	if enabled {
+		e = 1
+	}
+	if _, err := db.conn.Exec("UPDATE steering_rules SET enabled = ? WHERE id = ?", e, id); err != nil {
+		slog.Error("update steering rule failed", "error", err)
+	}
+}
+
+func (db *DB) DeleteSteeringRule(id int64) {
+	if _, err := db.conn.Exec("DELETE FROM steering_rules WHERE id = ?", id); err != nil {
+		slog.Error("delete steering rule failed", "error", err)
+	}
+}
+
+func (db *DB) ChangePassword(email, newPassword string) error {
+	hash, err := hashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	_, err = db.conn.Exec("UPDATE users SET password = ? WHERE email = ?", hash, email)
+	return err
 }
 
 func (db *DB) SaveSettings(settings map[string]string) {
