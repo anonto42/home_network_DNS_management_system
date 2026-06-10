@@ -7,9 +7,12 @@ services:
     image: dns-server:latest
     container_name: dns-server
     restart: unless-stopped
-    # host networking so the server sees real client IPs in query logs
-    # and can bind port 53 without a separate port mapping
-    network_mode: host
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "8080:8080/tcp"
+    cap_add:
+      - NET_BIND_SERVICE
     volumes:
       - dns-data:/app/data
     # All config is via CLI flags — no env vars needed
