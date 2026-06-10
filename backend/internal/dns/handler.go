@@ -96,6 +96,15 @@ func (h *Handler) HandleTCP(conn net.Conn, data []byte, clientIP string) {
 	}
 }
 
+func extractFirstA(answers []dns.RR) string {
+	for _, rr := range answers {
+		if a, ok := rr.(*dns.A); ok {
+			return a.A.String()
+		}
+	}
+	return ""
+}
+
 func (h *Handler) handle(msg *dns.Msg, clientIP string) (*dns.Msg, models.Action) {
 	if len(msg.Question) == 0 {
 		return nil, ""
@@ -104,35 +113,40 @@ func (h *Handler) handle(msg *dns.Msg, clientIP string) (*dns.Msg, models.Action
 	question := msg.Question[0]
 	domain := strings.ToLower(strings.TrimSuffix(question.Name, "."))
 	qtype := question.Qtype
+	qtypeStr := dns.TypeToString[qtype]
 
-	slog.Debug("dns query", "domain", domain, "qtype", dns.TypeToString[qtype], "client", clientIP)
+	slog.Debug("dns query", "domain", domain, "qtype", qtypeStr, "client", clientIP)
 
 	if h.db.IsBlocked(domain) {
-		h.db.LogQuery(domain, clientIP, models.ActionBlocked)
+		h.db.LogQuery(domain, clientIP, models.ActionBlocked, qtypeStr, blockedIPResp, 0)
 		return h.buildResponse(msg, blockedIPResp, 60, h.blockNX), models.ActionBlocked
 	}
 
 	if ip := h.db.GetCustomRecord(domain); ip != "" {
 		if qtype == dns.TypeA {
-			h.db.LogQuery(domain, clientIP, models.ActionCustom)
+			h.db.LogQuery(domain, clientIP, models.ActionCustom, qtypeStr, ip, 0)
 			return h.buildResponse(msg, ip, 300, false), models.ActionCustom
 		}
 	}
 
 	if cached := h.cache.Get(domain); cached != nil {
 		if qtype == dns.TypeA {
-			h.db.LogQuery(domain, clientIP, models.ActionCached)
+			h.db.LogQuery(domain, clientIP, models.ActionCached, qtypeStr, cached.IP, 0)
 			return h.buildResponse(msg, cached.IP, cached.TTL, cached.NXDOMAIN), models.ActionCached
 		}
 	}
 
+	start := time.Now()
 	response, err := h.forwarder.Forward(msg)
+	latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
 	if err != nil {
-		h.db.LogQuery(domain, clientIP, models.ActionError)
+		h.db.LogQuery(domain, clientIP, models.ActionError, qtypeStr, "", latencyMs)
 		resp := new(dns.Msg)
 		resp.SetRcode(msg, dns.RcodeServerFailure)
 		return resp, models.ActionError
 	}
+
+	resolvedIP := extractFirstA(response.Answer)
 
 	if response.Rcode == dns.RcodeNameError {
 		h.cache.SetNXDOMAIN(domain)
@@ -145,7 +159,7 @@ func (h *Handler) handle(msg *dns.Msg, clientIP string) (*dns.Msg, models.Action
 		}
 	}
 
-	h.db.LogQuery(domain, clientIP, models.ActionForwarded)
+	h.db.LogQuery(domain, clientIP, models.ActionForwarded, qtypeStr, resolvedIP, latencyMs)
 	return response, models.ActionForwarded
 }
 

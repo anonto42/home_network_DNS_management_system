@@ -108,7 +108,7 @@ func Open(path string) (*DB, error) {
 		"CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, password TEXT)",
 		"CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT, created_at TEXT)",
 		"CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)",
-		"CREATE TABLE IF NOT EXISTS query_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, domain TEXT, client_ip TEXT, action TEXT, mac_address TEXT DEFAULT '')",
+		"CREATE TABLE IF NOT EXISTS query_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, domain TEXT, client_ip TEXT, action TEXT, mac_address TEXT DEFAULT '', query_type TEXT DEFAULT '', resolved_ip TEXT DEFAULT '', latency_ms REAL DEFAULT 0)",
 		"CREATE TABLE IF NOT EXISTS custom_records (domain TEXT PRIMARY KEY, ip TEXT)",
 		"CREATE TABLE IF NOT EXISTS blocklist (domain TEXT PRIMARY KEY, added_at TEXT, wildcard INTEGER DEFAULT 0)",
 		`CREATE TABLE IF NOT EXISTS steering_rules (
@@ -127,8 +127,11 @@ func Open(path string) (*DB, error) {
 			return nil, err
 		}
 	}
-	// Add mac_address column to existing databases (ignore error if column already exists).
+	// Migrate existing databases — ignore errors if columns already exist.
 	conn.Exec("ALTER TABLE query_logs ADD COLUMN mac_address TEXT DEFAULT ''")
+	conn.Exec("ALTER TABLE query_logs ADD COLUMN query_type TEXT DEFAULT ''")
+	conn.Exec("ALTER TABLE query_logs ADD COLUMN resolved_ip TEXT DEFAULT ''")
+	conn.Exec("ALTER TABLE query_logs ADD COLUMN latency_ms REAL DEFAULT 0")
 	db := &DB{
 		conn:    conn,
 		logChan: make(chan models.QueryLog, 1000),
@@ -162,13 +165,16 @@ func (db *DB) VerifyUser(email, password string) bool {
 	return verifyPassword(password, hashedPassword)
 }
 
-func (db *DB) LogQuery(domain, clientIP string, action models.Action) {
+func (db *DB) LogQuery(domain, clientIP string, action models.Action, queryType, resolvedIP string, latencyMs float64) {
 	db.logChan <- models.QueryLog{
 		Timestamp:  time.Now(),
 		Domain:     domain,
 		ClientIP:   clientIP,
 		MACAddress: lookupMAC(clientIP),
 		Action:     action,
+		QueryType:  queryType,
+		ResolvedIP: resolvedIP,
+		LatencyMs:  latencyMs,
 	}
 }
 
@@ -214,7 +220,7 @@ func (db *DB) Flush() {
 		}
 	}()
 
-	stmt, err := tx.Prepare("INSERT INTO query_logs (timestamp, domain, client_ip, action, mac_address) VALUES (?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO query_logs (timestamp, domain, client_ip, action, mac_address, query_type, resolved_ip, latency_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		slog.Error("flush prepare failed", "error", err)
 		return
@@ -222,7 +228,7 @@ func (db *DB) Flush() {
 	defer stmt.Close()
 
 	for _, log := range logs {
-		_, err := stmt.Exec(log.Timestamp.Format(time.RFC3339), log.Domain, log.ClientIP, log.Action, log.MACAddress)
+		_, err := stmt.Exec(log.Timestamp.Format(time.RFC3339), log.Domain, log.ClientIP, log.Action, log.MACAddress, log.QueryType, log.ResolvedIP, log.LatencyMs)
 		if err != nil {
 			slog.Error("flush exec failed", "error", err)
 		}
@@ -255,7 +261,7 @@ func (db *DB) GetStats() models.Stats {
 }
 
 func (db *DB) GetLogs(limit int) []models.QueryLog {
-	rows, err := db.conn.Query("SELECT id, timestamp, domain, client_ip, action, COALESCE(mac_address,'') FROM query_logs ORDER BY id DESC LIMIT ?", limit)
+	rows, err := db.conn.Query("SELECT id, timestamp, domain, client_ip, action, COALESCE(mac_address,''), COALESCE(query_type,''), COALESCE(resolved_ip,''), COALESCE(latency_ms,0) FROM query_logs ORDER BY id DESC LIMIT ?", limit)
 	if err != nil {
 		return []models.QueryLog{}
 	}
@@ -265,7 +271,7 @@ func (db *DB) GetLogs(limit int) []models.QueryLog {
 	for rows.Next() {
 		var l models.QueryLog
 		var ts string
-		if err := rows.Scan(&l.ID, &ts, &l.Domain, &l.ClientIP, &l.Action, &l.MACAddress); err != nil {
+		if err := rows.Scan(&l.ID, &ts, &l.Domain, &l.ClientIP, &l.Action, &l.MACAddress, &l.QueryType, &l.ResolvedIP, &l.LatencyMs); err != nil {
 			continue
 		}
 		if t, err := time.Parse(time.RFC3339, ts); err == nil {
@@ -424,7 +430,7 @@ func (db *DB) GetLogsFiltered(limit int, action, domain string) []models.QueryLo
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
-	query := "SELECT id, timestamp, domain, client_ip, action, COALESCE(mac_address,'') FROM query_logs WHERE 1=1"
+	query := "SELECT id, timestamp, domain, client_ip, action, COALESCE(mac_address,''), COALESCE(query_type,''), COALESCE(resolved_ip,''), COALESCE(latency_ms,0) FROM query_logs WHERE 1=1"
 	args := []any{}
 	if action != "" {
 		query += " AND action = ?"
@@ -447,7 +453,7 @@ func (db *DB) GetLogsFiltered(limit int, action, domain string) []models.QueryLo
 	for rows.Next() {
 		var l models.QueryLog
 		var ts string
-		if err := rows.Scan(&l.ID, &ts, &l.Domain, &l.ClientIP, &l.Action, &l.MACAddress); err != nil {
+		if err := rows.Scan(&l.ID, &ts, &l.Domain, &l.ClientIP, &l.Action, &l.MACAddress, &l.QueryType, &l.ResolvedIP, &l.LatencyMs); err != nil {
 			continue
 		}
 		if t, err := time.Parse(time.RFC3339, ts); err == nil {

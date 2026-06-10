@@ -229,7 +229,7 @@ export default function LogTable({ compact }: Props) {
                       </TableCell>
                       {!compact && (
                         <TableCell>
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{guessType(l.domain || '')}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{l.query_type || guessType(l.domain || '')}</span>
                         </TableCell>
                       )}
                       <TableCell className="text-right pr-3">
@@ -267,12 +267,26 @@ export default function LogTable({ compact }: Props) {
                               ))}
                             </div>
 
+                            {/* Second row: resolved IP, latency */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-muted/30">
+                              <div className="px-4 py-3">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Resolved IP</p>
+                                <p className="font-mono text-[11px] text-foreground">{l.resolved_ip || '—'}</p>
+                              </div>
+                              <div className="px-4 py-3">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Latency</p>
+                                <p className="font-mono text-[11px] text-foreground">
+                                  {l.latency_ms != null && l.latency_ms > 0 ? `${l.latency_ms.toFixed(1)} ms` : '—'}
+                                </p>
+                              </div>
+                            </div>
+
                             {/* Bottom row: domain + type + action + link */}
                             <div className="bg-muted/20 px-4 py-3 flex flex-wrap items-center justify-between gap-4">
                               <div className="flex items-center gap-4 min-w-0 flex-1">
                                 {/* Record type pill */}
                                 <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/60 px-2 py-1 shrink-0">
-                                  {guessType(l.domain || '')}
+                                  {l.query_type || guessType(l.domain || '')}
                                 </span>
                                 {/* Domain */}
                                 <span className={`font-mono text-[12px] font-semibold truncate ${l.action === 'blocked' ? 'text-destructive' : 'text-foreground'}`}>

@@ -13,12 +13,15 @@ const (
 )
 
 type QueryLog struct {
-	ID         int64     `json:"id" example:"1"`
-	Timestamp  time.Time `json:"timestamp" example:"2024-10-25T10:00:00Z"`
-	Domain     string    `json:"domain" example:"example.com"`
-	ClientIP   string    `json:"client_ip" example:"192.168.1.5"`
-	MACAddress string    `json:"mac_address" example:"aa:bb:cc:dd:ee:ff"`
-	Action     Action    `json:"action" example:"forwarded"`
+	ID          int64     `json:"id" example:"1"`
+	Timestamp   time.Time `json:"timestamp" example:"2024-10-25T10:00:00Z"`
+	Domain      string    `json:"domain" example:"example.com"`
+	ClientIP    string    `json:"client_ip" example:"192.168.1.5"`
+	MACAddress  string    `json:"mac_address" example:"aa:bb:cc:dd:ee:ff"`
+	Action      Action    `json:"action" example:"forwarded"`
+	QueryType   string    `json:"query_type" example:"A"`
+	ResolvedIP  string    `json:"resolved_ip" example:"93.184.216.34"`
+	LatencyMs   float64   `json:"latency_ms" example:"12.5"`
 }
 
 type CustomRecord struct {

@@ -431,8 +431,14 @@ export interface components {
             domain?: string;
             /** @example 1 */
             id?: number;
+            /** @example 12.5 */
+            latency_ms?: number;
             /** @example aa:bb:cc:dd:ee:ff */
             mac_address?: string;
+            /** @example A */
+            query_type?: string;
+            /** @example 93.184.216.34 */
+            resolved_ip?: string;
             /** @example 2024-10-25T10:00:00Z */
             timestamp?: string;
         };
