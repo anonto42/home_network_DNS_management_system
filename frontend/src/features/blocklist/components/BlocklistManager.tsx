@@ -274,7 +274,7 @@ export default function BlocklistManager() {
       </div>
 
       {/* Main blocked domains table */}
-      <Card className="w-full overflow-hidden shadow-sm glass-panel rounded-lg">
+      <Card className="w-full overflow-hidden shadow-sm glass-panel rounded-lg" data-tour="blocklist-list">
         {/* Toolbar */}
         <CardHeader className="pb-3 bg-muted/10 border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

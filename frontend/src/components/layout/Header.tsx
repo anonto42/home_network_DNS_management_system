@@ -285,7 +285,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95 transition-transform cursor-pointer">
+              <Button variant="ghost" size="icon" data-tour="notification-bell" className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95 transition-transform cursor-pointer">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <span className="absolute top-2 right-2 flex h-2 w-2">

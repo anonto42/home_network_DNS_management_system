@@ -109,7 +109,7 @@ export default function LogTable({ compact }: Props) {
         onCancel={() => setConfirmClear(false)}
       />
 
-      <Card className={`overflow-hidden shadow-sm${compact ? ' h-full flex flex-col' : ''}`}>
+      <Card data-tour="query-logs-list" className={`overflow-hidden shadow-sm${compact ? ' h-full flex flex-col' : ''}`}>
         {/* Full page header — two-container toolbar, no title */}
         {!compact && (
           <CardHeader className="pb-3 bg-muted/5">

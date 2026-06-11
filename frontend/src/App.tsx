@@ -8,6 +8,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useTheme, type Theme } from './hooks/useTheme'
 import LoginPage from './pages/LoginPage'
+import { TourProvider } from './contexts/TourContext'
 import { apiGet, apiPost, apiPut, apiDelete } from './hooks/api'
 import {
   Calendar,
@@ -177,7 +178,7 @@ function NetworkLoadChart() {
   const hasData = cumTotal > 0
 
   return (
-    <Card className="overflow-hidden shadow-sm">
+    <Card className="overflow-hidden shadow-sm" data-tour="chart-queries">
       <CardHeader className="pb-0 pt-4 px-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           {/* Title */}
@@ -509,7 +510,7 @@ const Dashboard = () => {
           <div className="lg:col-span-8 flex flex-col">
             <LogTable compact />
           </div>
-          <div className="lg:col-span-4 flex flex-col">
+          <div className="lg:col-span-4 flex flex-col" data-tour="system-health">
             <SystemHealth />
           </div>
         </div>
@@ -830,7 +831,7 @@ const SteeringPage = () => {
         </div>
 
         {/* Rules table */}
-        <Card className="overflow-hidden shadow-sm glass-panel rounded-lg">
+        <Card className="overflow-hidden shadow-sm glass-panel rounded-lg" data-tour="traffic-steering-list">
           <CardHeader className="pb-3 bg-muted/10 border-b border-border">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -1019,7 +1020,7 @@ const SettingsPage = () => {
             </Card>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-6" data-tour="settings-card">
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="font-bold tracking-tight text-foreground">Appearance</CardTitle>
@@ -1184,7 +1185,7 @@ const ProfilePage = () => {
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Manage your account details and preferences.</p>
         </div>
         <div className="grid gap-6">
-          <Card className="shadow-sm">
+          <Card className="shadow-sm" data-tour="profile-card">
             <CardHeader>
               <CardTitle className="font-bold tracking-tight text-foreground">Account Details</CardTitle>
               <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Your dynamic NetShield account profile info.</CardDescription>
@@ -1286,9 +1287,11 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/*" element={
           <ProtectedRoute>
-            <DashboardLayout>
-              <AnimatedRoutes />
-            </DashboardLayout>
+            <TourProvider>
+              <DashboardLayout>
+                <AnimatedRoutes />
+              </DashboardLayout>
+            </TourProvider>
           </ProtectedRoute>
         } />
       </Routes>

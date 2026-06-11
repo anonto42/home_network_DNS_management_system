@@ -287,7 +287,7 @@ export default function RecordManager() {
       </div>
 
       {/* Records table */}
-      <Card className="overflow-hidden shadow-sm glass-panel rounded-lg">
+      <Card className="overflow-hidden shadow-sm glass-panel rounded-lg" data-tour="dns-records-list">
         <CardHeader className="pb-3 bg-muted/10 border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>

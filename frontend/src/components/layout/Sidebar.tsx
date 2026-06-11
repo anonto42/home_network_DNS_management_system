@@ -10,9 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  HelpCircle,
 } from 'lucide-react';
 import { useLayout } from '../../hooks/useLayout';
 import { useAuth } from '../../hooks/useAuth';
+import { useTour } from '../../contexts/TourContext';
 import { apiDelete } from '../../hooks/api';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,7 @@ const Logo = ({ collapsed }: { collapsed: boolean }) => (
 
 export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => {
   const { logout } = useAuth();
+  const { startTour } = useTour();
   const navigate = useNavigate();
 
   const navItems = [
@@ -58,7 +61,7 @@ export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = 
         <Logo collapsed={collapsed} />
       </div>
 
-      <nav className="flex-1 space-y-1 px-2">
+      <nav className="flex-1 space-y-1 px-2" data-tour="sidebar-navigation">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -83,6 +86,18 @@ export const SidebarContent: React.FC<{ collapsed?: boolean }> = ({ collapsed = 
       </nav>
 
       <div className="px-3 mt-auto space-y-1">
+        <button
+          onClick={startTour}
+          title={collapsed ? "System Tour" : undefined}
+          className={cn(
+            "w-full flex items-center transition-all duration-200 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10",
+            collapsed ? "justify-center p-2 mx-1" : "gap-3 px-3 py-2 mx-1"
+          )}
+        >
+          <HelpCircle className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">System Tour</span>}
+        </button>
+
         <NavLink
           to="/settings"
           className={({ isActive }) => cn(
