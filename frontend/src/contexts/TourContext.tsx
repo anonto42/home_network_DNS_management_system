@@ -203,11 +203,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   // Calculate popover fixed position
   const getPopoverStyle = (): React.CSSProperties => {
+    // Mobile fallback: bottom-anchored banner with margin spacing
+    if (window.innerWidth < 640) {
+      return {
+        position: 'fixed',
+        bottom: '16px',
+        left: '16px',
+        right: '16px',
+        zIndex: 9999,
+        width: 'calc(100vw - 32px)',
+        maxWidth: 'none',
+      }
+    }
+
     const popoverStyle: React.CSSProperties = {
       position: 'fixed',
       zIndex: 9999,
+      width: '380px',
       maxWidth: '380px',
-      width: 'calc(100vw - 32px)',
     }
 
     if (targetRect) {
@@ -215,21 +228,34 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       const step = TOUR_STEPS[currentStepIndex]
       const placement = step?.placement || 'bottom'
 
-      // Screen boundary constraints
-      const leftBound = 16
-      const rightBound = window.innerWidth - 396
+      // Calculate centering offset
+      const elementCenterX = targetRect.left + targetRect.width / 2
+      let popoverLeft = elementCenterX - 190 // Center popover (190 is half of 380px)
 
-      if (placement === 'bottom') {
+      // Keep within boundaries of the screen (16px padding minimum)
+      const maxLeft = window.innerWidth - 380 - 16
+      const minLeft = 16
+      popoverLeft = Math.max(minLeft, Math.min(maxLeft, popoverLeft))
+
+      // Smart flip: if bottom placement overflows the viewport bottom, flip to top
+      let resolvedPlacement = placement
+      if (placement === 'bottom' && targetRect.bottom + gap + 260 > window.innerHeight && targetRect.top - 260 > 0) {
+        resolvedPlacement = 'top'
+      } else if (placement === 'top' && targetRect.top - gap - 260 < 0 && targetRect.bottom + 260 < window.innerHeight) {
+        resolvedPlacement = 'bottom'
+      }
+
+      if (resolvedPlacement === 'bottom') {
         popoverStyle.top = `${targetRect.bottom + gap}px`
-        popoverStyle.left = `${Math.max(leftBound, Math.min(rightBound, targetRect.left + targetRect.width / 2 - 190))}px`
-      } else if (placement === 'top') {
+        popoverStyle.left = `${popoverLeft}px`
+      } else if (resolvedPlacement === 'top') {
         popoverStyle.bottom = `${window.innerHeight - targetRect.top + gap}px`
-        popoverStyle.left = `${Math.max(leftBound, Math.min(rightBound, targetRect.left + targetRect.width / 2 - 190))}px`
-      } else if (placement === 'right') {
-        popoverStyle.top = `${Math.max(leftBound, Math.min(window.innerHeight - 250, targetRect.top + targetRect.height / 2 - 100))}px`
+        popoverStyle.left = `${popoverLeft}px`
+      } else if (resolvedPlacement === 'right') {
+        popoverStyle.top = `${Math.max(16, Math.min(window.innerHeight - 300, targetRect.top + targetRect.height / 2 - 100))}px`
         popoverStyle.left = `${targetRect.right + gap}px`
-      } else if (placement === 'left') {
-        popoverStyle.top = `${Math.max(leftBound, Math.min(window.innerHeight - 250, targetRect.top + targetRect.height / 2 - 100))}px`
+      } else if (resolvedPlacement === 'left') {
+        popoverStyle.top = `${Math.max(16, Math.min(window.innerHeight - 300, targetRect.top + targetRect.height / 2 - 100))}px`
         popoverStyle.right = `${window.innerWidth - targetRect.left + gap}px`
       } else {
         // Fallback center
@@ -276,7 +302,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                   height: targetRect.height + 12,
                 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="absolute border border-primary/60 bg-primary/[0.03] rounded-md shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] z-[9991]"
+                className="fixed border-2 border-primary bg-primary/[0.04] rounded-sm glow-primary z-[9991]"
               />
             )}
 
