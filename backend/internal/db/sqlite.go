@@ -121,6 +121,14 @@ func Open(path string) (*DB, error) {
 			priority        INTEGER NOT NULL DEFAULT 0,
 			enabled         INTEGER NOT NULL DEFAULT 1
 		)`,
+		`CREATE TABLE IF NOT EXISTS notifications (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			type TEXT NOT NULL,
+			title TEXT NOT NULL,
+			message TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			read INTEGER DEFAULT 0
+		)`,
 	}
 	for _, q := range queries {
 		if _, err := conn.Exec(q); err != nil {
@@ -556,3 +564,51 @@ func (db *DB) SaveSettings(settings map[string]string) {
 		slog.Error("settings commit failed", "error", err)
 	}
 }
+
+func (db *DB) AddNotification(notifType, title, message string) error {
+	createdAt := time.Now().UTC().Format(time.RFC3339)
+	_, err := db.conn.Exec("INSERT INTO notifications (type, title, message, created_at, read) VALUES (?, ?, ?, ?, 0)",
+		notifType, title, message, createdAt)
+	return err
+}
+
+func (db *DB) GetNotifications() ([]models.Notification, error) {
+	rows, err := db.conn.Query("SELECT id, type, title, message, created_at, read FROM notifications ORDER BY created_at DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var notifs []models.Notification
+	for rows.Next() {
+		var n models.Notification
+		var readInt int
+		if err := rows.Scan(&n.ID, &n.Type, &n.Title, &n.Message, &n.CreatedAt, &readInt); err != nil {
+			return nil, err
+		}
+		n.Read = readInt == 1
+		notifs = append(notifs, n)
+	}
+	return notifs, nil
+}
+
+func (db *DB) MarkNotificationRead(id int64) error {
+	_, err := db.conn.Exec("UPDATE notifications SET read = 1 WHERE id = ?", id)
+	return err
+}
+
+func (db *DB) MarkAllNotificationsRead() error {
+	_, err := db.conn.Exec("UPDATE notifications SET read = 1")
+	return err
+}
+
+func (db *DB) DeleteNotification(id int64) error {
+	_, err := db.conn.Exec("DELETE FROM notifications WHERE id = ?", id)
+	return err
+}
+
+func (db *DB) ClearAllNotifications() error {
+	_, err := db.conn.Exec("DELETE FROM notifications")
+	return err
+}
+

@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/clipboard'
 import { getRecords, addRecord, deleteRecord } from '../api'
-import { addNotification } from '@/lib/notifications'
+import { dispatchNotificationsUpdate } from '@/lib/notifications'
 import { usePolling } from '../../../hooks/usePolling'
 import { useWindowFocus } from '../../../hooks/useWindowFocus'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -97,7 +97,7 @@ export default function RecordManager() {
       const v = ip.trim()
       resetForm()
       toast.success('Record added', { description: `${d} → ${v}` })
-      addNotification('success', 'DNS Record Created', `Successfully created local DNS mapping: ${d} → ${v}`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to add record')
     } finally {
@@ -111,7 +111,7 @@ export default function RecordManager() {
       setDeleteTarget(null)
       await loadRecords()
       toast.success('Record deleted', { description: d })
-      addNotification('info', 'DNS Record Deleted', `Removed local DNS mapping for: ${d}`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to delete record')
     }

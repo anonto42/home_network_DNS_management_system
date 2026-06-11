@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -147,6 +148,7 @@ func (h *Handler) AddRecord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.db.AddCustomRecord(body.Domain, body.IP)
+	h.db.AddNotification("success", "DNS Record Created", fmt.Sprintf("Custom DNS record created for %s pointing to %s.", body.Domain, body.IP))
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -159,6 +161,7 @@ func (h *Handler) AddRecord(w http.ResponseWriter, r *http.Request) {
 // @Success      200     {object}  map[string]bool
 // @Failure      400     {object}  map[string]string
 // @Router       /api/records [delete]
+// func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
@@ -176,6 +179,7 @@ func (h *Handler) DeleteRecord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.db.DeleteCustomRecord(body.Domain)
+	h.db.AddNotification("info", "DNS Record Deleted", fmt.Sprintf("Custom DNS record for %s has been deleted.", body.Domain))
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -215,6 +219,7 @@ func (h *Handler) AddToBlocklist(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.db.AddToBlocklist(body.Domain, body.Wildcard)
+	h.db.AddNotification("warning", "Domain Blocked", fmt.Sprintf("Domain %s added to local blocklist (Wildcard: %t).", body.Domain, body.Wildcard))
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -260,6 +265,7 @@ func (h *Handler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.db.SaveSettings(body)
+	h.db.AddNotification("success", "Settings Saved", "Upstream DNS and blocking behaviors updated successfully.")
 
 	// Apply changes immediately without restart.
 	if addr, ok := body["upstream_dns"]; ok && addr != "" {
@@ -303,6 +309,7 @@ func (h *Handler) RemoveFromBlocklist(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.db.RemoveFromBlocklist(body.Domain)
+	h.db.AddNotification("success", "Domain Unblocked", fmt.Sprintf("Domain %s removed from local blocklist.", body.Domain))
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -344,6 +351,7 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		respond(w, 500, map[string]string{"error": "failed to change password"})
 		return
 	}
+	h.db.AddNotification("info", "Password Changed", "Administrator account password updated successfully.")
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -369,6 +377,7 @@ func (h *Handler) AddSteeringRule(w http.ResponseWriter, r *http.Request) {
 		respond(w, 500, map[string]string{"error": "failed to add rule"})
 		return
 	}
+	h.db.AddNotification("success", "Steering Rule Added", fmt.Sprintf("Added rule \"%s\" successfully.", body.Name))
 	respond(w, 200, map[string]any{"ok": true, "id": id})
 }
 
@@ -380,6 +389,11 @@ func (h *Handler) UpdateSteeringRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.db.UpdateSteeringRuleEnabled(body.ID, body.Enabled)
+	status := "disabled"
+	if body.Enabled {
+		status = "enabled"
+	}
+	h.db.AddNotification("info", fmt.Sprintf("Steering Rule %s", strings.Title(status)), fmt.Sprintf("Traffic steering rule ID %d has been %s.", body.ID, status))
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -391,6 +405,7 @@ func (h *Handler) DeleteSteeringRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.db.DeleteSteeringRule(body.ID)
+	h.db.AddNotification("info", "Steering Rule Deleted", fmt.Sprintf("Traffic steering rule ID %d has been deleted.", body.ID))
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
@@ -404,4 +419,56 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		"email": email,
 		"name":  "Administrator",
 	})
+}
+
+func (h *Handler) GetNotifications(w http.ResponseWriter, r *http.Request) {
+	notifs, err := h.db.GetNotifications()
+	if err != nil {
+		respond(w, 500, map[string]string{"error": "failed to retrieve notifications"})
+		return
+	}
+	if notifs == nil {
+		notifs = []models.Notification{}
+	}
+	respond(w, 200, notifs)
+}
+
+func (h *Handler) MarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body models.ManageNotificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	var err error
+	if body.All {
+		err = h.db.MarkAllNotificationsRead()
+	} else {
+		err = h.db.MarkNotificationRead(body.ID)
+	}
+	if err != nil {
+		respond(w, 500, map[string]string{"error": "failed to update notifications"})
+		return
+	}
+	respond(w, 200, map[string]bool{"ok": true})
+}
+
+func (h *Handler) DeleteNotifications(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	var body models.ManageNotificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond(w, 400, map[string]string{"error": "invalid request body"})
+		return
+	}
+	var err error
+	if body.All {
+		err = h.db.ClearAllNotifications()
+	} else {
+		err = h.db.DeleteNotification(body.ID)
+	}
+	if err != nil {
+		respond(w, 500, map[string]string{"error": "failed to delete notifications"})
+		return
+	}
+	respond(w, 200, map[string]bool{"ok": true})
 }

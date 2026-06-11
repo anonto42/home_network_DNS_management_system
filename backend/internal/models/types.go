@@ -111,3 +111,18 @@ type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
 }
+
+type Notification struct {
+	ID        int64  `json:"id"`
+	Type      string `json:"type"` // "success", "info", "warning", "error"
+	Title     string `json:"title"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"created_at"`
+	Read      bool   `json:"read"`
+}
+
+type ManageNotificationRequest struct {
+	ID  int64 `json:"id"`
+	All bool  `json:"all"`
+}
+

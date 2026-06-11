@@ -28,7 +28,7 @@ import {
 
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
-import { addNotification } from '@/lib/notifications'
+import { dispatchNotificationsUpdate } from '@/lib/notifications'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { StatsCards } from './features/stats'
 import { SystemHealth } from './features/stats/components/SystemHealth'
@@ -620,7 +620,7 @@ const SteeringPage = () => {
       }].sort((a, b) => a.priority - b.priority || a.id - b.id))
       resetForm()
       toast.success('Rule added', { description: name.trim() })
-      addNotification('success', 'Steering Rule Added', `Added rule "${name.trim()}" successfully.`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to add rule')
     } finally {
@@ -635,7 +635,7 @@ const SteeringPage = () => {
     try {
       await apiPut('/steering', { id: rule.id, enabled: newEnabled })
       toast.success(newEnabled ? 'Rule enabled' : 'Rule disabled', { description: rule.name })
-      addNotification('info', `Steering Rule ${newEnabled ? 'Enabled' : 'Disabled'}`, `Steering rule "${rule.name}" has been ${newEnabled ? 'enabled' : 'disabled'}.`)
+      dispatchNotificationsUpdate()
     } catch {
       // Revert on failure
       setRules(prev => prev.map(r => r.id === rule.id ? { ...r, enabled: rule.enabled } : r))
@@ -649,7 +649,7 @@ const SteeringPage = () => {
       setRules(prev => prev.filter(r => r.id !== id))
       setDeleteTarget(null)
       toast.success('Rule deleted')
-      addNotification('info', 'Steering Rule Deleted', `Successfully deleted traffic steering rule.`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to delete rule')
     }
@@ -968,7 +968,7 @@ const SettingsPage = () => {
     try {
       await saveSettings({ upstream_dns: resolvedUpstream, block_nxdomain: String(blockNXDomain) })
       toast.success('Settings saved', { description: `Upstream: ${resolvedUpstream}` })
-      addNotification('success', 'Settings Saved', `Successfully updated system configuration. Upstream set to ${resolvedUpstream}.`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to save settings')
     } finally {
@@ -1106,7 +1106,7 @@ const ProfilePage = () => {
       const res = await apiPut('/password', { current_password: currentPw, new_password: newPw }) as { ok?: boolean; error?: string }
       if (res.ok) {
         toast.success('Password changed successfully')
-        addNotification('info', 'Password Changed', 'Administrator account password updated successfully.')
+        dispatchNotificationsUpdate()
         setCurrentPw(''); setNewPw(''); setConfirmPw('')
       } else {
         toast.error(res.error ?? 'Failed to change password')

@@ -31,7 +31,7 @@ import { useLayout } from '../../hooks/useLayout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  getNotifications,
+  fetchNotifications,
   markAllAsRead,
   clearAllNotifications,
   deleteNotification,
@@ -78,15 +78,24 @@ export const Header: React.FC = () => {
   const { isSidebarCollapsed } = useLayout();
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState<SystemNotification[]>(getNotifications())
+  const [notifications, setNotifications] = useState<SystemNotification[]>([])
+
+  const loadNotifications = useCallback(async () => {
+    const list = await fetchNotifications()
+    setNotifications(list)
+  }, [])
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setNotifications(getNotifications())
+    loadNotifications()
+
+    window.addEventListener('netshield_notifications_update', loadNotifications)
+    const interval = setInterval(loadNotifications, 10000)
+
+    return () => {
+      window.removeEventListener('netshield_notifications_update', loadNotifications)
+      clearInterval(interval)
     }
-    window.addEventListener('netshield_notifications_update', handleUpdate)
-    return () => window.removeEventListener('netshield_notifications_update', handleUpdate)
-  }, [])
+  }, [loadNotifications])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
@@ -318,8 +327,8 @@ export const Header: React.FC = () => {
                         </div>
                         <div className="space-y-0.5 pr-6 flex-1">
                           <p className={`text-xs font-bold leading-tight ${!n.read ? 'text-foreground font-extrabold' : 'text-foreground/85'}`}>{n.title}</p>
-                          <p className="text-[11px] text-muted-foreground leading-normal">{n.description}</p>
-                          <p className="text-[9px] text-muted-foreground/60 font-bold uppercase tracking-wider">{formatTime(n.timestamp)}</p>
+                          <p className="text-[11px] text-muted-foreground leading-normal">{n.message}</p>
+                          <p className="text-[9px] text-muted-foreground/60 font-bold uppercase tracking-wider">{formatTime(n.created_at)}</p>
                         </div>
                         <button
                           onClick={(e) => {

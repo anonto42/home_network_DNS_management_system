@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getBlocklist, addToBlocklist, removeFromBlocklist, type BlockedDomain } from '../api'
-import { addNotification } from '@/lib/notifications'
+import { dispatchNotificationsUpdate } from '@/lib/notifications'
 import { usePolling } from '../../../hooks/usePolling'
 import { useWindowFocus } from '../../../hooks/useWindowFocus'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -82,7 +82,7 @@ export default function BlocklistManager() {
       resetForm()
       await fetchList()
       toast.success('Domain blocked', { description: wildcard ? `*.${d}` : d })
-      addNotification('warning', 'Domain Blocked', `Successfully added domain to blocklist: ${wildcard ? `*.${d}` : d}`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to block domain')
     } finally {
@@ -96,7 +96,7 @@ export default function BlocklistManager() {
       setUnblockTarget(null)
       await fetchList()
       toast.success('Domain unblocked', { description: domain })
-      addNotification('success', 'Domain Unblocked', `Successfully removed domain from blocklist: ${domain}`)
+      dispatchNotificationsUpdate()
     } catch {
       toast.error('Failed to unblock domain')
     }
