@@ -496,13 +496,13 @@ const SteeringPage = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
+  const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [conditionType, setConditionType] = useState('Domain')
   const [conditionValue, setConditionValue] = useState('')
   const [actionType, setActionType] = useState('Forward')
   const [actionTarget, setActionTarget] = useState('')
   const [priority, setPriority] = useState(1)
-  const fetchedRef = useRef(false)
 
   const fetchRules = useCallback(async () => {
     try {
@@ -515,21 +515,22 @@ const SteeringPage = () => {
     }
   }, [])
 
-  useEffect(() => {
-    if (!fetchedRef.current) { fetchedRef.current = true; fetchRules() }
-  }, [fetchRules])
-
   usePolling(fetchRules, 10000, [])
   useWindowFocus(fetchRules)
 
   const resetForm = () => {
     setName(''); setConditionValue(''); setActionTarget(''); setPriority(1)
     setConditionType('Domain'); setActionType('Forward')
+    setShowForm(false)
   }
 
   const handleAdd = async () => {
     if (!name.trim() || !conditionValue.trim()) {
       toast.warning('Fill in rule name and condition value')
+      return
+    }
+    if (actionType !== 'Block' && !actionTarget.trim()) {
+      toast.warning('Fill in the target for Forward or Redirect actions')
       return
     }
     setSaving(true)
@@ -552,7 +553,7 @@ const SteeringPage = () => {
         action_target: actionType === 'Block' ? '' : actionTarget.trim(),
         priority,
         enabled: true,
-      }].sort((a, b) => a.priority - b.priority))
+      }].sort((a, b) => a.priority - b.priority || a.id - b.id))
       resetForm()
       toast.success('Rule added', { description: name.trim() })
     } catch {
@@ -563,11 +564,15 @@ const SteeringPage = () => {
   }
 
   const toggleRule = async (rule: SteeringRule) => {
+    const newEnabled = !rule.enabled
+    // Optimistic update first
+    setRules(prev => prev.map(r => r.id === rule.id ? { ...r, enabled: newEnabled } : r))
     try {
-      await apiPut('/steering', { id: rule.id, enabled: !rule.enabled })
-      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, enabled: !r.enabled } : r))
-      toast.success(rule.enabled ? 'Rule disabled' : 'Rule enabled', { description: rule.name })
+      await apiPut('/steering', { id: rule.id, enabled: newEnabled })
+      toast.success(newEnabled ? 'Rule enabled' : 'Rule disabled', { description: rule.name })
     } catch {
+      // Revert on failure
+      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, enabled: rule.enabled } : r))
       toast.error('Failed to update rule')
     }
   }
@@ -588,13 +593,12 @@ const SteeringPage = () => {
   const renderSkeletonRows = () =>
     Array.from({ length: 3 }).map((_, i) => (
       <TableRow key={i} className={i % 2 === 1 ? 'bg-muted/[0.15]' : ''}>
-        <TableCell><Skeleton className="h-3 w-6" /></TableCell>
-        <TableCell><Skeleton className="h-3 w-32" /></TableCell>
-        <TableCell><Skeleton className="h-3 w-24" /></TableCell>
+        <TableCell className="pl-4"><Skeleton className="h-3 w-6" /></TableCell>
+        <TableCell><Skeleton className="h-3 w-36" /></TableCell>
+        <TableCell><Skeleton className="h-3 w-28" /></TableCell>
         <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-9 ml-auto" /></TableCell>
-        <TableCell />
+        <TableCell><Skeleton className="h-5 w-9" /></TableCell>
+        <TableCell className="pr-4"><Skeleton className="h-7 w-7 ml-auto" /></TableCell>
       </TableRow>
     ))
 
@@ -610,19 +614,127 @@ const SteeringPage = () => {
         onCancel={() => setDeleteTarget(null)}
       />
 
+      {/* Create rule modal overlay */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
+          <div className="relative z-10 w-full max-w-2xl bg-background shadow-2xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-5 bg-muted/10">
+              <div>
+                <p className="text-sm font-bold text-foreground">Create Steering Rule</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                  Route DNS traffic based on domain, client IP, or query type.
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={resetForm}>
+                ✕
+              </Button>
+            </div>
+            {/* Modal body */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">Rule Name</label>
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Block Social Media" autoFocus />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">Priority</label>
+                  <select value={priority} onChange={e => setPriority(Number(e.target.value))} className={sel}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(p => (
+                      <option key={p} value={p}>#{p} — {p === 1 ? 'Highest' : p === 10 ? 'Lowest' : `Priority ${p}`}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="h-[1px] bg-muted/60" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">Condition Type</label>
+                  <select value={conditionType} onChange={e => { setConditionType(e.target.value); setConditionValue('') }} className={sel}>
+                    <option>Domain</option>
+                    <option>Client IP</option>
+                    <option>Query Type</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">Condition Value</label>
+                  <Input
+                    value={conditionValue}
+                    onChange={e => setConditionValue(e.target.value)}
+                    placeholder={CONDITION_PLACEHOLDERS[conditionType]}
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+
+              <div className="h-[1px] bg-muted/60" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">Action</label>
+                  <select value={actionType} onChange={e => { setActionType(e.target.value); if (e.target.value === 'Block') setActionTarget('') }} className={sel}>
+                    <option>Forward</option>
+                    <option>Block</option>
+                    <option>Redirect</option>
+                  </select>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                    {actionType === 'Forward' && 'Send queries to a specific upstream DNS'}
+                    {actionType === 'Block' && 'Return 0.0.0.0 — domain does not resolve'}
+                    {actionType === 'Redirect' && 'Return a specific IP address'}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">
+                    Target
+                    {actionType === 'Block' && <span className="text-muted-foreground font-normal ml-1">(not needed)</span>}
+                  </label>
+                  <Input
+                    value={actionTarget}
+                    onChange={e => setActionTarget(e.target.value)}
+                    placeholder={actionType === 'Forward' ? '1.1.1.1:853 or 10.0.0.1:53' : actionType === 'Redirect' ? '192.168.1.100' : '—'}
+                    disabled={actionType === 'Block'}
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Modal footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 bg-muted/5">
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={resetForm}>
+                Cancel
+              </Button>
+              <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2" onClick={handleAdd} disabled={saving}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                {saving ? 'Adding…' : 'Add Rule'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-8">
         {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Traffic Steering</h1>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Define routing rules to control how DNS traffic is resolved across your network.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Traffic Steering</h1>
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
+              Define routing rules to control how DNS traffic is resolved across your network.
+            </p>
+          </div>
+          <Button className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm" onClick={() => setShowForm(true)}>
+            <PlusCircle className="h-4 w-4" /> New Rule
+          </Button>
         </div>
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: 'Total Rules',    value: loading ? null : rules.length,       icon: <Globe className="h-5 w-5 text-primary" />,      bg: 'bg-primary/10' },
-            { label: 'Active Rules',   value: loading ? null : activeCount,         icon: <Gauge className="h-5 w-5 text-emerald-500" />,   bg: 'bg-emerald-500/10' },
-            { label: 'Disabled Rules', value: loading ? null : rules.length - activeCount, icon: <Power className="h-5 w-5 text-muted-foreground" />, bg: 'bg-muted/60' },
+            { label: 'Total Rules',    value: loading ? null : rules.length,                icon: <Globe className="h-5 w-5 text-primary" />,              bg: 'bg-primary/10' },
+            { label: 'Active Rules',   value: loading ? null : activeCount,                  icon: <Gauge className="h-5 w-5 text-emerald-500" />,           bg: 'bg-emerald-500/10' },
+            { label: 'Disabled Rules', value: loading ? null : rules.length - activeCount,   icon: <Power className="h-5 w-5 text-muted-foreground" />,      bg: 'bg-muted/60' },
           ].map(card => (
             <Card key={card.label} className="shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
@@ -641,88 +753,18 @@ const SteeringPage = () => {
           ))}
         </div>
 
-        {/* Create rule form */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <Card className="lg:col-span-12 shadow-sm">
-            <CardHeader className="pb-4 bg-muted/5">
-              <div className="flex items-center gap-2">
-                <PlusCircle className="h-4 w-4 text-primary" />
-                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Create Steering Rule</CardTitle>
-              </div>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Route DNS traffic based on domain, client IP, query type, or time.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Rule Name</label>
-                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Block Social Media" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Priority</label>
-                  <select value={priority} onChange={e => setPriority(Number(e.target.value))} className={sel}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(p => <option key={p} value={p}>#{p} — {p === 1 ? 'Highest' : p === 10 ? 'Lowest' : `Priority ${p}`}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Condition Type</label>
-                  <select value={conditionType} onChange={e => setConditionType(e.target.value)} className={sel}>
-                    <option>Domain</option>
-                    <option>Client IP</option>
-                    <option>Query Type</option>
-                    <option>Time Range</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Condition Value</label>
-                  <Input
-                    value={conditionValue}
-                    onChange={e => setConditionValue(e.target.value)}
-                    placeholder={CONDITION_PLACEHOLDERS[conditionType]}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Action</label>
-                  <select value={actionType} onChange={e => { setActionType(e.target.value); if (e.target.value === 'Block') setActionTarget('') }} className={sel}>
-                    <option>Forward</option>
-                    <option>Block</option>
-                    <option>Redirect</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">
-                    Target {actionType === 'Block' ? <span className="text-muted-foreground font-normal">(not required)</span> : ''}
-                  </label>
-                  <Input
-                    value={actionTarget}
-                    onChange={e => setActionTarget(e.target.value)}
-                    placeholder={actionType === 'Forward' ? '10.0.0.1:53' : actionType === 'Redirect' ? '192.168.1.100' : '—'}
-                    disabled={actionType === 'Block'}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={resetForm}>
-                  Reset
-                </Button>
-                <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2" onClick={handleAdd} disabled={saving}>
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  {saving ? 'Adding…' : 'Add Rule'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Rules table */}
         <Card className="overflow-hidden shadow-sm">
           <CardHeader className="pb-3 bg-muted/5">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-foreground">Active Rules</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Evaluated in priority order — #1 runs first.</CardDescription>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Steering Rules</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                  Evaluated in priority order — #1 runs first. Toggle to enable or disable without deleting.
+                </p>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {rules.length} rule{rules.length !== 1 ? 's' : ''}
+                {activeCount} active / {rules.length} total
               </span>
             </div>
           </CardHeader>
@@ -734,7 +776,7 @@ const SteeringPage = () => {
                   <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Name</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Action</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[90px]">Enabled</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Status</TableHead>
                   <TableHead className="pr-4 w-[50px]" />
                 </TableRow>
               </TableHeader>
@@ -746,18 +788,23 @@ const SteeringPage = () => {
                         <Globe className="h-8 w-8 opacity-40" />
                         <div>
                           <p className="text-sm font-medium">No steering rules yet</p>
-                          <p className="text-xs opacity-70 mt-1">Create a rule above to start routing DNS traffic</p>
+                          <p className="text-xs opacity-70 mt-1">Click "New Rule" to start routing DNS traffic</p>
                         </div>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : rules.map((rule, idx) => (
-                  <TableRow key={rule.id} className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''} ${!rule.enabled ? 'opacity-50' : ''}`}>
+                  <TableRow
+                    key={rule.id}
+                    className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''}`}
+                  >
                     <TableCell className="pl-4">
                       <span className="text-[10px] font-bold text-muted-foreground tabular-nums">#{rule.priority}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm font-semibold text-foreground">{rule.name}</span>
+                      <span className={`text-sm font-semibold ${rule.enabled ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                        {rule.name}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -778,7 +825,11 @@ const SteeringPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule)} size="sm" />
+                      <Switch
+                        checked={rule.enabled}
+                        onCheckedChange={(_checked) => toggleRule(rule)}
+                        size="sm"
+                      />
                     </TableCell>
                     <TableCell className="pr-4 text-right">
                       <Button

@@ -37,6 +37,16 @@ const recordTypeStyles: Record<string, string> = {
   TXT:  'bg-muted/50 text-muted-foreground',
 }
 
+const RECORD_TYPES = ['A (IPv4 Address)', 'AAAA (IPv6 Address)', 'CNAME (Alias)', 'MX (Mail Exchange)', 'TXT (Text)']
+
+const PLACEHOLDERS: Record<string, { domain: string; value: string }> = {
+  'A (IPv4 Address)':   { domain: 'nas.home', value: '192.168.1.100' },
+  'AAAA (IPv6 Address)':{ domain: 'nas.home', value: 'fd00::1' },
+  'CNAME (Alias)':      { domain: 'www.home', value: 'nas.home' },
+  'MX (Mail Exchange)': { domain: 'home.local', value: '10 mail.home' },
+  'TXT (Text)':         { domain: 'home.local', value: 'v=spf1 ...' },
+}
+
 function getTypeLabel(ip: string): string {
   if (ip.includes(':')) return 'AAAA'
   if (ip.includes('.')) return 'A'
@@ -49,6 +59,7 @@ export default function RecordManager() {
   const [records, setRecords] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [domain, setDomain] = useState('')
   const [ip, setIp] = useState('')
   const [recordType, setRecordType] = useState('A (IPv4 Address)')
@@ -68,18 +79,23 @@ export default function RecordManager() {
   usePolling(loadRecords, 10000, [])
   useWindowFocus(loadRecords)
 
+  const resetForm = () => {
+    setDomain(''); setIp(''); setRecordType('A (IPv4 Address)'); setShowForm(false)
+  }
+
   const handleAdd = async () => {
     if (!domain.trim() || !ip.trim()) {
-      toast.warning('Please fill in all fields')
+      toast.warning('Please fill in both domain and value')
       return
     }
     setAdding(true)
     try {
       await addRecord(domain.trim(), ip.trim())
       await loadRecords()
-      setDomain('')
-      setIp('')
-      toast.success('Record added', { description: `${domain} → ${ip}` })
+      const d = domain.trim()
+      const v = ip.trim()
+      resetForm()
+      toast.success('Record added', { description: `${d} → ${v}` })
     } catch {
       toast.error('Failed to add record')
     } finally {
@@ -105,23 +121,22 @@ export default function RecordManager() {
     const blob = new Blob([lines], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = 'local-dns-records.txt'
-    a.click()
+    a.href = url; a.download = 'local-dns-records.txt'; a.click()
     URL.revokeObjectURL(url)
     toast.success('Exported', { description: `${entries.length} records` })
   }
 
   const entries = Object.entries(records || {})
+  const ph = PLACEHOLDERS[recordType] || PLACEHOLDERS['A (IPv4 Address)']
 
   const renderSkeletonRows = () =>
     Array.from({ length: 4 }).map((_, i) => (
       <TableRow key={i} className={i % 2 === 1 ? 'bg-muted/[0.15]' : ''}>
-        <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
+        <TableCell className="pl-4"><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
         <TableCell><Skeleton className="h-3 w-44" /></TableCell>
         <TableCell><Skeleton className="h-5 w-28" /></TableCell>
         <TableCell><Skeleton className="h-3 w-12" /></TableCell>
-        <TableCell className="text-right"><Skeleton className="h-7 w-14 ml-auto" /></TableCell>
+        <TableCell className="pr-4 text-right"><Skeleton className="h-7 w-7 ml-auto" /></TableCell>
       </TableRow>
     ))
 
@@ -137,12 +152,87 @@ export default function RecordManager() {
         onCancel={() => setDeleteTarget(null)}
       />
 
+      {/* Create record modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
+          <div className="relative z-10 w-full max-w-lg bg-background shadow-2xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-5 bg-muted/10">
+              <div>
+                <p className="text-sm font-bold text-foreground">Add DNS Record</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                  Create an authoritative record for your local network.
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={resetForm}>
+                ✕
+              </Button>
+            </div>
+            {/* Modal body */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">Record Type</label>
+                <select value={recordType} onChange={e => setRecordType(e.target.value)} className={sel}>
+                  {RECORD_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">Domain Name</label>
+                <Input
+                  value={domain}
+                  onChange={e => setDomain(e.target.value)}
+                  placeholder={ph.domain}
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                  spellCheck={false}
+                  autoComplete="off"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">Value</label>
+                <Input
+                  value={ip}
+                  onChange={e => setIp(e.target.value)}
+                  placeholder={ph.value}
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            {/* Modal footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 bg-muted/5">
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={resetForm}>
+                Cancel
+              </Button>
+              <Button
+                className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2"
+                onClick={handleAdd}
+                disabled={adding}
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                {adding ? 'Adding…' : 'Add Record'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page header */}
-      <div className="space-y-1">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Local DNS Records</h2>
-        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
-          Manage authoritative records for your local network environment.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Local DNS Records</h2>
+          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
+            Manage authoritative records for your local network environment.
+          </p>
+        </div>
+        <Button
+          className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm"
+          onClick={() => setShowForm(true)}
+        >
+          <PlusCircle className="h-4 w-4" /> New Record
+        </Button>
       </div>
 
       {/* Stat cards */}
@@ -184,158 +274,99 @@ export default function RecordManager() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Create form */}
-        <div className="lg:col-span-4">
-          <Card className="shadow-sm">
-            <CardHeader className="pb-4 bg-muted/5">
-              <div className="flex items-center gap-2">
-                <PlusCircle className="h-4 w-4 text-primary" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Create New Record</p>
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Add a new DNS record to your local network.
+      {/* Records table */}
+      <Card className="overflow-hidden shadow-sm">
+        <CardHeader className="pb-3 bg-muted/5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Existing Local Records</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                Authoritative records — these override upstream DNS for matching domains.
               </p>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Record Type</label>
-                <select value={recordType} onChange={e => setRecordType(e.target.value)} className={sel}>
-                  <option>A (IPv4 Address)</option>
-                  <option>AAAA (IPv6 Address)</option>
-                  <option>CNAME (Alias)</option>
-                  <option>MX (Mail Exchange)</option>
-                  <option>TXT (Text)</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Domain Name</label>
-                <Input
-                  value={domain}
-                  onChange={e => setDomain(e.target.value)}
-                  placeholder="e.g. internal.app.local"
-                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Value</label>
-                <Input
-                  value={ip}
-                  onChange={e => setIp(e.target.value)}
-                  placeholder="e.g. 192.168.1.50"
-                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-              </div>
-              <Button
-                className="w-full gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest mt-2"
-                onClick={handleAdd}
-                disabled={adding}
-              >
-                <PlusCircle className="h-4 w-4" />
-                {adding ? 'Adding…' : 'Add Record'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Records table */}
-        <Card className="lg:col-span-8 overflow-hidden shadow-sm">
-          <CardHeader className="pb-3 bg-muted/5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Existing Local Records</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
-                  Authoritative records for your local domain.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-[10px] font-bold uppercase tracking-widest shrink-0"
-                onClick={handleExport}
-                disabled={entries.length === 0}
-              >
-                <Download className="h-3.5 w-3.5" /> Export
-              </Button>
             </div>
-          </CardHeader>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-[10px] font-bold uppercase tracking-widest shrink-0"
+              onClick={handleExport}
+              disabled={entries.length === 0}
+            >
+              <Download className="h-3.5 w-3.5" /> Export
+            </Button>
+          </div>
+        </CardHeader>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="pl-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Type</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Domain Name</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Value / IP</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">TTL</TableHead>
-                  <TableHead className="pr-4 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? renderSkeletonRows() : entries.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-40 text-center">
-                      <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
-                        <ServerOff className="h-8 w-8 opacity-40" />
-                        <div>
-                          <p className="text-sm font-medium">No custom records yet</p>
-                          <p className="text-xs opacity-70 mt-1">Add a record using the form on the left</p>
-                        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableHead className="pl-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Type</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Domain Name</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Value / IP</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">TTL</TableHead>
+                <TableHead className="pr-4 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[60px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? renderSkeletonRows() : entries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-48 text-center">
+                    <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
+                      <ServerOff className="h-8 w-8 opacity-40" />
+                      <div>
+                        <p className="text-sm font-medium">No custom records yet</p>
+                        <p className="text-xs opacity-70 mt-1">Click "New Record" to add your first entry</p>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  entries.map(([d, val], idx) => {
-                    const type = getTypeLabel(val)
-                    const style = recordTypeStyles[type] || recordTypeStyles.TXT
-                    return (
-                      <TableRow
-                        key={d}
-                        className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''}`}
-                      >
-                        <TableCell className="pl-4">
-                          <Badge className={`font-bold text-[9px] px-2 py-0.5 border-none ${style}`}>{type}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-[12px] font-medium text-foreground">{d}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="bg-muted px-2 py-0.5 text-xs font-mono font-medium text-foreground">{val}</code>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => { copyToClipboard(val); toast.success('Copied', { description: val }) }}
-                            >
-                              <Copy className="h-3 w-3 text-muted-foreground" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-[10px] font-mono text-muted-foreground">3600s</TableCell>
-                        <TableCell className="pr-4 text-right">
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                entries.map(([d, val], idx) => {
+                  const type = getTypeLabel(val)
+                  const style = recordTypeStyles[type] || recordTypeStyles.TXT
+                  return (
+                    <TableRow
+                      key={d}
+                      className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''}`}
+                    >
+                      <TableCell className="pl-4">
+                        <Badge className={`font-bold text-[9px] px-2 py-0.5 border-none ${style}`}>{type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-[12px] font-medium text-foreground">{d}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="bg-muted px-2 py-0.5 text-xs font-mono font-medium text-foreground">{val}</code>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeleteTarget(d)}
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => { copyToClipboard(val); toast.success('Copied', { description: val }) }}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Copy className="h-3 w-3 text-muted-foreground" />
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
-      </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-[10px] font-mono text-muted-foreground">3600s</TableCell>
+                      <TableCell className="pr-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteTarget(d)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   )
 }
