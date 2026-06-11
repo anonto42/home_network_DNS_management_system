@@ -386,7 +386,7 @@ const Dashboard = () => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowTimeDropdown(v => !v)}
-                className="flex items-center gap-2 px-4 h-9 text-[10px] font-bold uppercase tracking-wider rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 shadow-sm select-none cursor-pointer"
+                className="flex items-center gap-2 px-4 h-9 text-[10px] font-bold uppercase tracking-wider rounded-md border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 shadow-sm select-none cursor-pointer"
               >
                 {range.mode === 'live' ? (
                   <span className="relative flex h-2 w-2 mr-1">
@@ -401,7 +401,7 @@ const Dashboard = () => {
               </button>
 
               {showTimeDropdown && (
-                <div className="absolute right-0 top-full mt-2 z-50 glass-panel border border-border rounded-xl shadow-xl p-2 w-[280px] space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-2 z-50 glass-panel border border-border rounded-md shadow-xl p-2 w-[280px] space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-3 py-1.5 border-b border-border mb-1">Select Timeframe</p>
                   
                   {/* Presets */}
@@ -415,7 +415,7 @@ const Dashboard = () => {
                           setRange(p)
                           setShowTimeDropdown(false)
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                        className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer ${
                           active 
                             ? "bg-primary/10 text-primary" 
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -440,7 +440,7 @@ const Dashboard = () => {
                     onClick={() => {
                       setRange({ mode: 'custom', from: customFrom || new Date(Date.now() - 3600000).toISOString().slice(0,16), to: customTo || new Date().toISOString().slice(0,16) })
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer ${
                       range.mode === 'custom' 
                         ? "bg-primary/10 text-primary" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
