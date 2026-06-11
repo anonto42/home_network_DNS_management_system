@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { motion } from 'framer-motion'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend,
@@ -21,6 +22,8 @@ import {
   Sun,
   Moon,
   Monitor,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
 
 import { toast } from 'sonner'
@@ -328,11 +331,37 @@ const Dashboard = () => {
   const [customFrom, setCustomFrom] = useState('')
   const [customTo,   setCustomTo]   = useState('')
   const [exporting, setExporting] = useState(false)
+  const [showTimeDropdown, setShowTimeDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowTimeDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const getActiveLabel = () => {
+    if (range.mode === 'live') return 'Live stream'
+    if (range.mode === 'preset') {
+      const matched = PRESETS.find(p => p.mode === 'preset' && p.hours === range.hours)
+      return matched ? (matched as any).label : `Last ${range.hours} Hours`
+    }
+    if (range.mode === 'custom') {
+      return 'Custom Range'
+    }
+    return 'Select Timeframe'
+  }
 
   const applyCustom = () => {
     if (!customFrom || !customTo) return
     setRange({ mode: 'custom', from: customFrom, to: customTo })
     setShowPicker(false)
+    setShowTimeDropdown(false) // Close the dropdown on apply
   }
 
   const handleExport = async () => {
@@ -351,75 +380,109 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Real-time monitoring for your DNS server.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Time range selector */}
-            <div className="relative">
-              <div className="flex bg-muted/50 p-0.5 gap-0">
-                {PRESETS.map(p => {
-                  const label = p.mode === 'live' ? 'Live' : (p.mode === 'preset' ? p.label : 'Custom')
-                  const active = range.mode === p.mode && (p.mode !== 'preset' || (range.mode === 'preset' && range.hours === p.hours))
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => { setRange(p); setShowPicker(false) }}
-                      className={`px-3 h-8 text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                        active
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {p.mode === 'live' && (
-                        <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle ${active ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
-                      )}
-                      {label}
-                    </button>
-                  )
-                })}
-                <button
-                  onClick={() => setShowPicker(v => !v)}
-                  className={`px-3 h-8 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
-                    range.mode === 'custom'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Calendar className="h-3 w-3" />
-                  {range.mode === 'custom' ? rangeLabel(range) : 'Custom'}
-                </button>
-              </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Time range selector dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowTimeDropdown(v => !v)}
+                className="flex items-center gap-2 px-4 h-9 text-[10px] font-bold uppercase tracking-wider rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 shadow-sm select-none cursor-pointer"
+              >
+                {range.mode === 'live' ? (
+                  <span className="relative flex h-2 w-2 mr-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                ) : (
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                )}
+                <span>{getActiveLabel()}</span>
+                <ChevronDown className={`ml-1 h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${showTimeDropdown ? "rotate-180" : ""}`} />
+              </button>
 
-              {/* Custom date-time range picker dropdown */}
-              {showPicker && (
-                <div className="absolute right-0 top-full mt-1 z-50 bg-card shadow-xl p-4 w-[340px] space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Custom Date & Time Range</p>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">From</label>
-                      <input
-                        type="datetime-local"
-                        value={customFrom}
-                        onChange={e => setCustomFrom(e.target.value)}
-                        className="w-full bg-muted px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
+              {showTimeDropdown && (
+                <div className="absolute right-0 top-full mt-2 z-50 glass-panel border border-border rounded-xl shadow-xl p-2 w-[280px] space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-3 py-1.5 border-b border-border mb-1">Select Timeframe</p>
+                  
+                  {/* Presets */}
+                  {PRESETS.map(p => {
+                    const label = p.mode === 'live' ? 'Live stream' : (p as any).label
+                    const active = range.mode === p.mode && (p.mode !== 'preset' || (range.mode === 'preset' && range.hours === (p as any).hours))
+                    return (
+                      <button
+                        key={p.mode === 'live' ? 'live' : (p as any).hours}
+                        onClick={() => {
+                          setRange(p)
+                          setShowTimeDropdown(false)
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                          active 
+                            ? "bg-primary/10 text-primary" 
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {p.mode === 'live' && (
+                            <span className="relative flex h-2 w-2 shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                          )}
+                          {label}
+                        </span>
+                        {active && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                      </button>
+                    )
+                  })}
+
+                  {/* Custom Option */}
+                  <button
+                    onClick={() => {
+                      setRange({ mode: 'custom', from: customFrom || new Date(Date.now() - 3600000).toISOString().slice(0,16), to: customTo || new Date().toISOString().slice(0,16) })
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                      range.mode === 'custom' 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      Custom Range
+                    </span>
+                    {range.mode === 'custom' && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </button>
+
+                  {/* Accordion panel for custom date selection */}
+                  {range.mode === 'custom' && (
+                    <div className="px-3 py-3 border-t border-border mt-2 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div>
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">From</label>
+                        <input
+                          type="datetime-local"
+                          value={customFrom}
+                          onChange={e => setCustomFrom(e.target.value)}
+                          className="w-full input-premium bg-muted/20 border border-border text-foreground text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">To</label>
+                        <input
+                          type="datetime-local"
+                          value={customTo}
+                          onChange={e => setCustomTo(e.target.value)}
+                          className="w-full input-premium bg-muted/20 border border-border text-foreground text-xs"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" className="flex-1 text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={applyCustom} disabled={!customFrom || !customTo}>
+                          Apply
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => setShowTimeDropdown(false)}>
+                          Close
+                        </Button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">To</label>
-                      <input
-                        type="datetime-local"
-                        value={customTo}
-                        onChange={e => setCustomTo(e.target.value)}
-                        className="w-full bg-muted px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="flex-1 text-[10px] font-bold uppercase tracking-widest" onClick={applyCustom} disabled={!customFrom || !customTo}>
-                      Apply Range
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => setShowPicker(false)}>
-                      Cancel
-                    </Button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -427,7 +490,7 @@ const Dashboard = () => {
             {/* Export */}
             <Button
               size="sm"
-              className="gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest"
+              className="gap-2 shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary"
               onClick={handleExport}
               disabled={exporting}
             >
@@ -618,16 +681,16 @@ const SteeringPage = () => {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
-          <div className="relative z-10 w-full max-w-2xl bg-background shadow-2xl">
+          <div className="relative z-10 w-full max-w-2xl bg-card border border-border shadow-2xl rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-5 bg-muted/10">
+            <div className="flex items-center justify-between px-6 py-5 bg-muted/20 border-b border-border">
               <div>
                 <p className="text-sm font-bold text-foreground">Create Steering Rule</p>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
                   Route DNS traffic based on domain, client IP, or query type.
                 </p>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={resetForm}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/40" onClick={resetForm}>
                 ✕
               </Button>
             </div>
@@ -636,11 +699,11 @@ const SteeringPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Rule Name</label>
-                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Block Social Media" autoFocus />
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Block Social Media" className="input-premium" autoFocus />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Priority</label>
-                  <select value={priority} onChange={e => setPriority(Number(e.target.value))} className={sel}>
+                  <select value={priority} onChange={e => setPriority(Number(e.target.value))} className="flex h-10 w-full select-premium focus:outline-none focus:ring-2 focus:ring-ring font-medium text-foreground transition-colors">
                     {[1,2,3,4,5,6,7,8,9,10].map(p => (
                       <option key={p} value={p}>#{p} — {p === 1 ? 'Highest' : p === 10 ? 'Lowest' : `Priority ${p}`}</option>
                     ))}
@@ -648,12 +711,12 @@ const SteeringPage = () => {
                 </div>
               </div>
 
-              <div className="h-[1px] bg-muted/60" />
+              <div className="h-[1px] bg-border/40" />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Condition Type</label>
-                  <select value={conditionType} onChange={e => { setConditionType(e.target.value); setConditionValue('') }} className={sel}>
+                  <select value={conditionType} onChange={e => { setConditionType(e.target.value); setConditionValue('') }} className="flex h-10 w-full select-premium focus:outline-none focus:ring-2 focus:ring-ring font-medium text-foreground transition-colors">
                     <option>Domain</option>
                     <option>Client IP</option>
                     <option>Query Type</option>
@@ -666,21 +729,22 @@ const SteeringPage = () => {
                     onChange={e => setConditionValue(e.target.value)}
                     placeholder={CONDITION_PLACEHOLDERS[conditionType]}
                     spellCheck={false}
+                    className="input-premium"
                   />
                 </div>
               </div>
 
-              <div className="h-[1px] bg-muted/60" />
+              <div className="h-[1px] bg-border/40" />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground">Action</label>
-                  <select value={actionType} onChange={e => { setActionType(e.target.value); if (e.target.value === 'Block') setActionTarget('') }} className={sel}>
+                  <select value={actionType} onChange={e => { setActionType(e.target.value); if (e.target.value === 'Block') setActionTarget('') }} className="flex h-10 w-full select-premium focus:outline-none focus:ring-2 focus:ring-ring font-medium text-foreground transition-colors">
                     <option>Forward</option>
                     <option>Block</option>
                     <option>Redirect</option>
                   </select>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
                     {actionType === 'Forward' && 'Send queries to a specific upstream DNS'}
                     {actionType === 'Block' && 'Return 0.0.0.0 — domain does not resolve'}
                     {actionType === 'Redirect' && 'Return a specific IP address'}
@@ -697,16 +761,17 @@ const SteeringPage = () => {
                     placeholder={actionType === 'Forward' ? '1.1.1.1:853 or 10.0.0.1:53' : actionType === 'Redirect' ? '192.168.1.100' : '—'}
                     disabled={actionType === 'Block'}
                     spellCheck={false}
+                    className="input-premium"
                   />
                 </div>
               </div>
             </div>
             {/* Modal footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 bg-muted/5">
-              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={resetForm}>
+            <div className="flex justify-end gap-3 px-6 py-4 bg-muted/10 border-t border-border">
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={resetForm}>
                 Cancel
               </Button>
-              <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2" onClick={handleAdd} disabled={saving}>
+              <Button className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2 btn-premium glow-primary" onClick={handleAdd} disabled={saving}>
                 <PlusCircle className="h-3.5 w-3.5" />
                 {saving ? 'Adding…' : 'Add Rule'}
               </Button>
@@ -724,7 +789,7 @@ const SteeringPage = () => {
               Define routing rules to control how DNS traffic is resolved across your network.
             </p>
           </div>
-          <Button className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm" onClick={() => setShowForm(true)}>
+          <Button className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary" onClick={() => setShowForm(true)}>
             <PlusCircle className="h-4 w-4" /> New Rule
           </Button>
         </div>
@@ -736,7 +801,7 @@ const SteeringPage = () => {
             { label: 'Active Rules',   value: loading ? null : activeCount,                  icon: <Gauge className="h-5 w-5 text-emerald-500" />,           bg: 'bg-emerald-500/10' },
             { label: 'Disabled Rules', value: loading ? null : rules.length - activeCount,   icon: <Power className="h-5 w-5 text-muted-foreground" />,      bg: 'bg-muted/60' },
           ].map(card => (
-            <Card key={card.label} className="shadow-sm">
+            <Card key={card.label} className="shadow-sm glass-panel hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 rounded-lg">
               <CardContent className="p-5 flex items-center gap-4">
                 <div className={`h-10 w-10 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
                   {card.icon}
@@ -754,8 +819,8 @@ const SteeringPage = () => {
         </div>
 
         {/* Rules table */}
-        <Card className="overflow-hidden shadow-sm">
-          <CardHeader className="pb-3 bg-muted/5">
+        <Card className="overflow-hidden shadow-sm glass-panel rounded-lg">
+          <CardHeader className="pb-3 bg-muted/10 border-b border-border">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Steering Rules</p>
@@ -771,21 +836,21 @@ const SteeringPage = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="pl-4 w-[50px] text-[10px] font-bold uppercase tracking-widest text-muted-foreground">#</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Name</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Action</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Status</TableHead>
-                  <TableHead className="pr-4 w-[50px]" />
+                <TableRow className="bg-muted/20 border-b border-border">
+                  <TableHead className="pl-6 w-[70px] text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-3.5">#</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-3.5">Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-3.5">Condition</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-3.5">Action</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[100px] py-3.5">Status</TableHead>
+                  <TableHead className="pr-6 w-[80px] py-3.5" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? renderSkeletonRows() : rules.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-40 text-center">
-                      <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
-                        <Globe className="h-8 w-8 opacity-40" />
+                      <div className="flex flex-col items-center gap-3 py-6 text-muted-foreground">
+                        <Globe className="h-8 w-8 opacity-40 animate-pulse" />
                         <div>
                           <p className="text-sm font-medium">No steering rules yet</p>
                           <p className="text-xs opacity-70 mt-1">Click "New Rule" to start routing DNS traffic</p>
@@ -796,27 +861,27 @@ const SteeringPage = () => {
                 ) : rules.map((rule, idx) => (
                   <TableRow
                     key={rule.id}
-                    className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''}`}
+                    className={`group transition-colors hover:bg-muted/20 border-b border-border ${idx % 2 === 1 ? 'bg-muted/[0.08]' : ''}`}
                   >
-                    <TableCell className="pl-4">
+                    <TableCell className="pl-6 py-3">
                       <span className="text-[10px] font-bold text-muted-foreground tabular-nums">#{rule.priority}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <span className={`text-sm font-semibold ${rule.enabled ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
                         {rule.name}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/60 px-2 py-1 shrink-0">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/60 px-2 py-0.5 rounded shrink-0">
                           {rule.condition_type}
                         </span>
-                        <span className="font-mono text-[11px] text-foreground">{rule.condition_value}</span>
+                        <span className="font-mono text-[12px] text-foreground font-semibold">{rule.condition_value}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <div className="flex items-center gap-2">
-                        <Badge className={`text-[9px] font-bold px-2 py-0.5 border-none shrink-0 ${ACTION_COLORS[rule.action_type] || ACTION_COLORS['Forward']}`}>
+                        <Badge className={`text-[9px] font-bold px-2 py-0.5 border-none rounded-md shrink-0 ${ACTION_COLORS[rule.action_type] || ACTION_COLORS['Forward']}`}>
                           {rule.action_type}
                         </Badge>
                         {rule.action_target && (
@@ -824,21 +889,21 @@ const SteeringPage = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-3">
                       <Switch
                         checked={rule.enabled}
                         onCheckedChange={(_checked) => toggleRule(rule)}
                         size="sm"
                       />
                     </TableCell>
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="pr-6 text-right py-3">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="h-7.5 w-7.5 opacity-0 group-hover:opacity-100 transition-all duration-200 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-md"
                         onClick={() => setDeleteTarget(rule.id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -995,7 +1060,7 @@ const SettingsPage = () => {
                 {isCustom && (
                   <div className="space-y-2">
                     <input
-                      className="flex h-9 w-full bg-muted px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+                      className="flex h-10 w-full font-mono text-sm input-premium"
                       placeholder="e.g. 192.168.1.1:53 or 192.168.1.1:853"
                       value={customUpstream}
                       onChange={e => setCustomUpstream(e.target.value)}
@@ -1011,8 +1076,8 @@ const SettingsPage = () => {
             </Card>
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => { setUpstream('1.1.1.1:853'); setBlockNXDomain(false) }}>Discard Changes</Button>
-              <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => { setUpstream('1.1.1.1:853'); setBlockNXDomain(false) }}>Discard Changes</Button>
+              <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
             </div>
           </div>
         )}
@@ -1066,15 +1131,15 @@ const ProfilePage = () => {
                 return (
                   <div key={label} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <p className="text-sm font-bold text-foreground">{label}</p>
-                    <input type="password" value={val} onChange={e => setter(e.target.value)} className="flex h-9 w-full sm:w-64 bg-muted px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    <input type="password" value={val} onChange={e => setter(e.target.value)} className="flex h-10 w-full sm:w-64 input-premium" />
                   </div>
                 )
               })}
             </CardContent>
           </Card>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => { setCurrentPw(''); setNewPw(''); setConfirmPw('') }}>Discard</Button>
-            <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+            <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => { setCurrentPw(''); setNewPw(''); setConfirmPw('') }}>Discard</Button>
+            <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
           </div>
         </div>
       </div>

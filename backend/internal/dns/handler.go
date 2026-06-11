@@ -341,39 +341,6 @@ func (h *Handler) getSteeringRules() []models.SteeringRule {
 	return rules
 }
 
-// matchesCondition returns true if the query satisfies the rule's condition.
-func matchesCondition(rule models.SteeringRule, domain, clientIP, qtypeStr string) bool {
-	val := strings.ToLower(strings.TrimSpace(rule.ConditionValue))
-	switch rule.ConditionType {
-	case "Domain":
-		// Support wildcard prefix: *.example.com matches sub.example.com and example.com
-		if strings.HasPrefix(val, "*.") {
-			suffix := val[2:]
-			return domain == suffix || strings.HasSuffix(domain, "."+suffix)
-		}
-		return domain == val
-	case "Client IP":
-		// Support CIDR (192.168.1.0/24) and exact IP
-		if strings.Contains(val, "/") {
-			_, ipNet, err := net.ParseCIDR(val)
-			if err != nil {
-				return false
-			}
-			ip := net.ParseIP(clientIP)
-			return ip != nil && ipNet.Contains(ip)
-		}
-		return clientIP == val
-	case "Query Type":
-		// Comma-separated list: "A, AAAA"
-		for _, t := range strings.Split(val, ",") {
-			if strings.TrimSpace(t) == strings.ToLower(qtypeStr) {
-				return true
-			}
-		}
-		return false
-	}
-	return false
-}
 
 // forwardToUpstream sends a query to a specific upstream address and returns the response.
 func forwardToUpstream(msg *dns.Msg, addr string) (*dns.Msg, error) {

@@ -53,7 +53,7 @@ function getTypeLabel(ip: string): string {
   return 'CNAME'
 }
 
-const sel = "flex h-10 w-full bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring font-medium text-foreground transition-colors"
+const sel = "flex h-10 w-full select-premium focus:outline-none focus:ring-2 focus:ring-ring font-medium text-foreground transition-colors"
 
 export default function RecordManager() {
   const [records, setRecords] = useState<Record<string, string>>({})
@@ -156,16 +156,16 @@ export default function RecordManager() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
-          <div className="relative z-10 w-full max-w-lg bg-background shadow-2xl">
+          <div className="relative z-10 w-full max-w-lg bg-card border border-border shadow-2xl rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-5 bg-muted/10">
+            <div className="flex items-center justify-between px-6 py-5 bg-muted/20 border-b border-border">
               <div>
                 <p className="text-sm font-bold text-foreground">Add DNS Record</p>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
                   Create an authoritative record for your local network.
                 </p>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={resetForm}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/40" onClick={resetForm}>
                 ✕
               </Button>
             </div>
@@ -186,6 +186,7 @@ export default function RecordManager() {
                   onKeyDown={e => e.key === 'Enter' && handleAdd()}
                   spellCheck={false}
                   autoComplete="off"
+                  className="input-premium"
                   autoFocus
                 />
               </div>
@@ -198,16 +199,17 @@ export default function RecordManager() {
                   onKeyDown={e => e.key === 'Enter' && handleAdd()}
                   spellCheck={false}
                   autoComplete="off"
+                  className="input-premium"
                 />
               </div>
             </div>
             {/* Modal footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 bg-muted/5">
-              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={resetForm}>
+            <div className="flex justify-end gap-3 px-6 py-4 bg-muted/10 border-t border-border">
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={resetForm}>
                 Cancel
               </Button>
               <Button
-                className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2"
+                className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2 btn-premium glow-primary"
                 onClick={handleAdd}
                 disabled={adding}
               >
@@ -228,7 +230,7 @@ export default function RecordManager() {
           </p>
         </div>
         <Button
-          className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm"
+          className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary"
           onClick={() => setShowForm(true)}
         >
           <PlusCircle className="h-4 w-4" /> New Record
@@ -257,7 +259,7 @@ export default function RecordManager() {
             bg: 'bg-rose-500/10',
           },
         ].map(card => (
-          <Card key={card.label} className="shadow-sm">
+          <Card key={card.label} className="shadow-sm glass-panel hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 rounded-lg">
             <CardContent className="p-5 flex items-center gap-4">
               <div className={`h-10 w-10 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
                 {card.icon}
@@ -275,8 +277,8 @@ export default function RecordManager() {
       </div>
 
       {/* Records table */}
-      <Card className="overflow-hidden shadow-sm">
-        <CardHeader className="pb-3 bg-muted/5">
+      <Card className="overflow-hidden shadow-sm glass-panel rounded-lg">
+        <CardHeader className="pb-3 bg-muted/10 border-b border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">Existing Local Records</p>
@@ -287,11 +289,11 @@ export default function RecordManager() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-[10px] font-bold uppercase tracking-widest shrink-0"
+              className="gap-2 text-[10px] font-bold uppercase tracking-widest shrink-0 btn-premium"
               onClick={handleExport}
               disabled={entries.length === 0}
             >
-              <Download className="h-3.5 w-3.5" /> Export
+              <Download className="h-3.5 w-3.5" /> Export List
             </Button>
           </div>
         </CardHeader>
@@ -299,20 +301,20 @@ export default function RecordManager() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="pl-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">Type</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Domain Name</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Value / IP</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px]">TTL</TableHead>
-                <TableHead className="pr-4 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[60px]" />
+              <TableRow className="bg-muted/20 border-b border-border">
+                <TableHead className="pl-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[100px] py-3.5">Type</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-3.5">Domain Name</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-3.5">Value / IP</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[100px] py-3.5">TTL</TableHead>
+                <TableHead className="pr-6 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-[80px] py-3.5" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? renderSkeletonRows() : entries.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-48 text-center">
-                    <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
-                      <ServerOff className="h-8 w-8 opacity-40" />
+                    <div className="flex flex-col items-center gap-3 py-6 text-muted-foreground">
+                      <ServerOff className="h-8 w-8 opacity-40 animate-pulse" />
                       <div>
                         <p className="text-sm font-medium">No custom records yet</p>
                         <p className="text-xs opacity-70 mt-1">Click "New Record" to add your first entry</p>
@@ -327,36 +329,36 @@ export default function RecordManager() {
                   return (
                     <TableRow
                       key={d}
-                      className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/[0.15]' : ''}`}
+                      className={`group transition-colors hover:bg-muted/20 border-b border-border ${idx % 2 === 1 ? 'bg-muted/[0.08]' : ''}`}
                     >
-                      <TableCell className="pl-4">
-                        <Badge className={`font-bold text-[9px] px-2 py-0.5 border-none ${style}`}>{type}</Badge>
+                      <TableCell className="pl-6 py-3">
+                        <Badge className={`font-bold text-[9px] px-2.5 py-0.5 border-none rounded-md ${style}`}>{type}</Badge>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-[12px] font-medium text-foreground">{d}</span>
+                      <TableCell className="py-3">
+                        <span className="font-mono text-[13px] font-semibold text-foreground tracking-tight">{d}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-3">
                         <div className="flex items-center gap-2">
-                          <code className="bg-muted px-2 py-0.5 text-xs font-mono font-medium text-foreground">{val}</code>
+                          <code className="bg-muted/80 px-2 py-0.5 rounded text-xs font-mono font-medium text-foreground">{val}</code>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-md"
                             onClick={() => { copyToClipboard(val); toast.success('Copied', { description: val }) }}
                           >
-                            <Copy className="h-3 w-3 text-muted-foreground" />
+                            <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell className="text-[10px] font-mono text-muted-foreground">3600s</TableCell>
-                      <TableCell className="pr-4 text-right">
+                      <TableCell className="text-[11px] font-mono text-muted-foreground py-3">3600s</TableCell>
+                      <TableCell className="pr-6 text-right py-3">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                          className="h-7.5 w-7.5 opacity-0 group-hover:opacity-100 transition-all duration-200 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-md"
                           onClick={() => setDeleteTarget(d)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -370,3 +372,4 @@ export default function RecordManager() {
     </div>
   )
 }
+

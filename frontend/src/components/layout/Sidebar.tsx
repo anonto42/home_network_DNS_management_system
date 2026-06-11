@@ -7,8 +7,8 @@ import {
   Shield,
   ListTodo,
   Settings,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
   LogOut,
 } from 'lucide-react';
 import { useLayout } from '../../hooks/useLayout';
@@ -120,18 +120,22 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-card transition-all duration-300 z-50 shadow-md",
+        "hidden md:flex flex-col fixed left-0 top-0 h-screen bg-card border-r border-border transition-all duration-300 z-50 shadow-md",
         isSidebarCollapsed ? "w-[72px]" : "w-64"
       )}
     >
-      <div className="absolute -right-3 top-20 z-50">
+      <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 z-50">
         <Button
           variant="outline"
           size="icon"
           onClick={toggleSidebar}
-          className="h-6 w-6 shadow-sm bg-muted hover:bg-muted/70"
+          className="h-7 w-7 rounded-full shadow-md bg-card hover:bg-muted border border-border transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center"
         >
-          {isSidebarCollapsed ? <PanelLeftOpen className="h-3 w-3" /> : <PanelLeftClose className="h-3 w-3" />}
+          {isSidebarCollapsed ? (
+            <ChevronRight className="h-4 w-4 text-primary" />
+          ) : (
+            <ChevronLeft className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          )}
         </Button>
       </div>
       <SidebarContent collapsed={isSidebarCollapsed} />
