@@ -21,11 +21,22 @@ import {
   Sun,
   Moon,
   Monitor,
+  X,
+  Info,
+  Trash2,
 } from 'lucide-react';
 import { useTheme, type Theme } from '../../hooks/useTheme';
 import { useLayout } from '../../hooks/useLayout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import {
+  getNotifications,
+  markAllAsRead,
+  clearAllNotifications,
+  deleteNotification,
+  markAsRead,
+  SystemNotification
+} from '@/lib/notifications';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +77,27 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
   const { isSidebarCollapsed } = useLayout();
   const { theme, setTheme } = useTheme();
+  const [notifications, setNotifications] = useState<SystemNotification[]>(getNotifications())
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setNotifications(getNotifications())
+    }
+    window.addEventListener('netshield_notifications_update', handleUpdate)
+    return () => window.removeEventListener('netshield_notifications_update', handleUpdate)
+  }, [])
+
+  const unreadCount = notifications.filter(n => !n.read).length
+
+  const formatTime = (isoString: string): string => {
+    const diff = Date.now() - new Date(isoString).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
 
   const cycleTheme = () => {
     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]
@@ -243,43 +275,65 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95 transition-transform">
+              <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:scale-105 active:scale-95 transition-transform cursor-pointer">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
+                  </span>
+                )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 mt-2 shadow-lg" align="end">
-              <div className="p-3 bg-muted/20 flex items-center justify-between">
-                <h4 className="font-bold text-[10px] uppercase tracking-widest text-foreground">Notifications</h4>
-                <Button variant="ghost" size="sm" className="h-auto p-0 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">Mark all as read</Button>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer">
-                  <div className="h-8 w-8 bg-destructive/15 flex items-center justify-center shrink-0">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-foreground leading-none">High Traffic Alert</p>
-                    <p className="text-xs text-muted-foreground leading-snug">Anomaly detected in north-america-east-1 cluster.</p>
-                    <p className="text-[9px] text-muted-foreground/70 font-bold uppercase">2 mins ago</p>
-                  </div>
-                </div>
-                <div className="p-3.5 flex gap-3 hover:bg-muted/30 transition-colors cursor-pointer">
-                  <div className="h-8 w-8 bg-emerald-500/15 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-foreground leading-none">Sync Complete</p>
-                    <p className="text-xs text-muted-foreground leading-snug">All blocklists updated successfully.</p>
-                    <p className="text-[9px] text-muted-foreground/70 font-bold uppercase">1 hour ago</p>
-                  </div>
+            <PopoverContent className="w-80 p-0 mt-2 shadow-lg glass-panel border-border" align="end">
+              <div className="p-3 bg-muted/20 flex items-center justify-between border-b border-border">
+                <h4 className="font-bold text-[10px] uppercase tracking-widest text-foreground">Notifications ({unreadCount})</h4>
+                <div className="flex gap-2">
+                  {unreadCount > 0 && (
+                    <Button variant="ghost" size="sm" className="h-auto p-0 text-[9px] font-bold uppercase tracking-widest text-primary hover:underline cursor-pointer" onClick={() => markAllAsRead()}>Mark read</Button>
+                  )}
+                  {notifications.length > 0 && (
+                    <Button variant="ghost" size="sm" className="h-auto p-0 text-[9px] font-bold uppercase tracking-widest text-destructive hover:underline cursor-pointer" onClick={() => clearAllNotifications()}>Clear all</Button>
+                  )}
                 </div>
               </div>
-              <div className="p-2 bg-muted/20">
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-primary justify-center h-8">View all notifications</Button>
+              <div className="max-h-[300px] overflow-y-auto divide-y divide-border/40">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
+                    No notifications
+                  </div>
+                ) : (
+                  notifications.map(n => {
+                    const Icon = n.type === 'success' ? CheckCircle2 : (n.type === 'warning' ? AlertCircle : Info)
+                    const iconBg = n.type === 'success' ? 'bg-emerald-500/10 text-emerald-500' : (n.type === 'warning' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary')
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => markAsRead(n.id)}
+                        className={`p-3 flex gap-3 hover:bg-muted/40 transition-colors cursor-pointer relative group ${!n.read ? 'bg-primary/5' : ''}`}
+                      >
+                        <div className={`h-8 w-8 ${iconBg} flex items-center justify-center shrink-0 rounded-lg`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="space-y-0.5 pr-6 flex-1">
+                          <p className={`text-xs font-bold leading-tight ${!n.read ? 'text-foreground font-extrabold' : 'text-foreground/85'}`}>{n.title}</p>
+                          <p className="text-[11px] text-muted-foreground leading-normal">{n.description}</p>
+                          <p className="text-[9px] text-muted-foreground/60 font-bold uppercase tracking-wider">{formatTime(n.timestamp)}</p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteNotification(n.id)
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-all p-1 cursor-pointer hover:bg-muted/50 rounded"
+                          title="Delete notification"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </PopoverContent>
           </Popover>

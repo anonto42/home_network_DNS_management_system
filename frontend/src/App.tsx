@@ -28,6 +28,7 @@ import {
 
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
+import { addNotification } from '@/lib/notifications'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { StatsCards } from './features/stats'
 import { SystemHealth } from './features/stats/components/SystemHealth'
@@ -619,6 +620,7 @@ const SteeringPage = () => {
       }].sort((a, b) => a.priority - b.priority || a.id - b.id))
       resetForm()
       toast.success('Rule added', { description: name.trim() })
+      addNotification('success', 'Steering Rule Added', `Added rule "${name.trim()}" successfully.`)
     } catch {
       toast.error('Failed to add rule')
     } finally {
@@ -633,6 +635,7 @@ const SteeringPage = () => {
     try {
       await apiPut('/steering', { id: rule.id, enabled: newEnabled })
       toast.success(newEnabled ? 'Rule enabled' : 'Rule disabled', { description: rule.name })
+      addNotification('info', `Steering Rule ${newEnabled ? 'Enabled' : 'Disabled'}`, `Steering rule "${rule.name}" has been ${newEnabled ? 'enabled' : 'disabled'}.`)
     } catch {
       // Revert on failure
       setRules(prev => prev.map(r => r.id === rule.id ? { ...r, enabled: rule.enabled } : r))
@@ -646,6 +649,7 @@ const SteeringPage = () => {
       setRules(prev => prev.filter(r => r.id !== id))
       setDeleteTarget(null)
       toast.success('Rule deleted')
+      addNotification('info', 'Steering Rule Deleted', `Successfully deleted traffic steering rule.`)
     } catch {
       toast.error('Failed to delete rule')
     }
@@ -964,6 +968,7 @@ const SettingsPage = () => {
     try {
       await saveSettings({ upstream_dns: resolvedUpstream, block_nxdomain: String(blockNXDomain) })
       toast.success('Settings saved', { description: `Upstream: ${resolvedUpstream}` })
+      addNotification('success', 'Settings Saved', `Successfully updated system configuration. Upstream set to ${resolvedUpstream}.`)
     } catch {
       toast.error('Failed to save settings')
     } finally {
@@ -1100,6 +1105,7 @@ const ProfilePage = () => {
       const res = await apiPut('/password', { current_password: currentPw, new_password: newPw }) as { ok?: boolean; error?: string }
       if (res.ok) {
         toast.success('Password changed successfully')
+        addNotification('info', 'Password Changed', 'Administrator account password updated successfully.')
         setCurrentPw(''); setNewPw(''); setConfirmPw('')
       } else {
         toast.error(res.error ?? 'Failed to change password')
@@ -1191,7 +1197,7 @@ const CloudSyncPage = () => {
                   <p className="text-sm font-bold text-foreground">Sync Interval</p>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">How often to sync with remote nodes</p>
                 </div>
-                <select className="flex h-9 w-full sm:w-48 bg-muted px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <select className="select-premium flex h-9 w-full sm:w-48 bg-muted px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground">
                   <option>Every 5 minutes</option>
                   <option>Every 15 minutes</option>
                   <option>Every hour</option>
@@ -1201,8 +1207,8 @@ const CloudSyncPage = () => {
             </CardContent>
           </Card>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => toast.info('Sync initiated')}>Sync Now</Button>
-            <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={() => toast.success('Cloud sync settings saved')}>Save Configuration</Button>
+            <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-muted" onClick={() => { toast.info('Sync initiated'); addNotification('info', 'Cloud Sync Initiated', 'Manual synchronization with peer nodes started.'); }}>Sync Now</Button>
+            <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 glow-primary" onClick={() => { toast.success('Cloud sync settings saved'); addNotification('success', 'Cloud Sync Configuration Saved', 'Updated automatic synchronization intervals and peer list.'); }}>Save Configuration</Button>
           </div>
         </div>
       </div>
