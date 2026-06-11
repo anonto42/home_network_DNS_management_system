@@ -199,79 +199,111 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isActive, currentStepIndex])
 
-  const currentStep = isActive ? TOUR_STEPS[currentStepIndex] : null
-
-  // Calculate popover fixed position
+  // ─── Clamp popover to viewport in every direction ────────────────────
   const getPopoverStyle = (): React.CSSProperties => {
-    // Mobile fallback: bottom-anchored banner with margin spacing
-    if (window.innerWidth < 640) {
+    const POPOVER_W = Math.min(380, window.innerWidth - 32) // never wider than screen
+    const POPOVER_H = 300 // conservative estimate
+    const GAP = 14
+    const EDGE = 16 // min gap from any viewport edge
+
+    // Mobile: always dock to bottom of screen
+    if (window.innerWidth < 600) {
       return {
         position: 'fixed',
-        bottom: '16px',
-        left: '16px',
-        right: '16px',
+        bottom: `${EDGE}px`,
+        left: `${EDGE}px`,
+        right: `${EDGE}px`,
         zIndex: 9999,
-        width: 'calc(100vw - 32px)',
-        maxWidth: 'none',
       }
     }
 
-    const popoverStyle: React.CSSProperties = {
+    const style: React.CSSProperties = {
       position: 'fixed',
       zIndex: 9999,
-      width: '380px',
-      maxWidth: '380px',
+      width: `${POPOVER_W}px`,
     }
 
-    if (targetRect) {
-      const gap = 14
-      const step = TOUR_STEPS[currentStepIndex]
-      const placement = step?.placement || 'bottom'
+    if (!targetRect) {
+      // Centered in viewport
+      style.top = '50%'
+      style.left = '50%'
+      style.transform = 'translate(-50%, -50%)'
+      return style
+    }
 
-      // Calculate centering offset
-      const elementCenterX = targetRect.left + targetRect.width / 2
-      let popoverLeft = elementCenterX - 190 // Center popover (190 is half of 380px)
+    const step = TOUR_STEPS[currentStepIndex]
+    let placement = step?.placement ?? 'bottom'
 
-      // Keep within boundaries of the screen (16px padding minimum)
-      const maxLeft = window.innerWidth - 380 - 16
-      const minLeft = 16
-      popoverLeft = Math.max(minLeft, Math.min(maxLeft, popoverLeft))
+    // Clamp X: center on element, but stay within screen edges
+    const elementCenterX = targetRect.left + targetRect.width / 2
+    const rawLeft = elementCenterX - POPOVER_W / 2
+    const clampedLeft = Math.max(EDGE, Math.min(window.innerWidth - POPOVER_W - EDGE, rawLeft))
 
-      // Smart flip: if bottom placement overflows the viewport bottom, flip to top
-      let resolvedPlacement = placement
-      if (placement === 'bottom' && targetRect.bottom + gap + 260 > window.innerHeight && targetRect.top - 260 > 0) {
-        resolvedPlacement = 'top'
-      } else if (placement === 'top' && targetRect.top - gap - 260 < 0 && targetRect.bottom + 260 < window.innerHeight) {
-        resolvedPlacement = 'bottom'
-      }
+    // Auto-flip placement if insufficient space
+    const spaceBelow = window.innerHeight - targetRect.bottom
+    const spaceAbove = targetRect.top
+    const spaceRight = window.innerWidth - targetRect.right
+    const spaceLeft = targetRect.left
 
-      if (resolvedPlacement === 'bottom') {
-        popoverStyle.top = `${targetRect.bottom + gap}px`
-        popoverStyle.left = `${popoverLeft}px`
-      } else if (resolvedPlacement === 'top') {
-        popoverStyle.bottom = `${window.innerHeight - targetRect.top + gap}px`
-        popoverStyle.left = `${popoverLeft}px`
-      } else if (resolvedPlacement === 'right') {
-        popoverStyle.top = `${Math.max(16, Math.min(window.innerHeight - 300, targetRect.top + targetRect.height / 2 - 100))}px`
-        popoverStyle.left = `${targetRect.right + gap}px`
-      } else if (resolvedPlacement === 'left') {
-        popoverStyle.top = `${Math.max(16, Math.min(window.innerHeight - 300, targetRect.top + targetRect.height / 2 - 100))}px`
-        popoverStyle.right = `${window.innerWidth - targetRect.left + gap}px`
-      } else {
-        // Fallback center
-        popoverStyle.top = '50%'
-        popoverStyle.left = '50%'
-        popoverStyle.transform = 'translate(-50%, -50%)'
-      }
+    if (placement === 'bottom' && spaceBelow < POPOVER_H + GAP && spaceAbove > spaceBelow) {
+      placement = 'top'
+    } else if (placement === 'top' && spaceAbove < POPOVER_H + GAP && spaceBelow > spaceAbove) {
+      placement = 'bottom'
+    } else if (placement === 'right' && spaceRight < POPOVER_W + GAP && spaceLeft > spaceRight) {
+      placement = 'left'
+    } else if (placement === 'left' && spaceLeft < POPOVER_W + GAP && spaceRight > spaceLeft) {
+      placement = 'right'
+    }
+
+    if (placement === 'bottom') {
+      const rawTop = targetRect.bottom + GAP
+      style.top = `${Math.min(rawTop, window.innerHeight - POPOVER_H - EDGE)}px`
+      style.left = `${clampedLeft}px`
+    } else if (placement === 'top') {
+      const rawBottom = window.innerHeight - targetRect.top + GAP
+      // Clamp so box doesn't go above viewport
+      const clampedTop = Math.max(EDGE, targetRect.top - GAP - POPOVER_H)
+      style.top = `${clampedTop}px`
+      style.left = `${clampedLeft}px`
+      void rawBottom // silence unused warning
+    } else if (placement === 'right') {
+      const rawLeft2 = targetRect.right + GAP
+      style.left = `${Math.min(rawLeft2, window.innerWidth - POPOVER_W - EDGE)}px`
+      style.top = `${Math.max(EDGE, Math.min(window.innerHeight - POPOVER_H - EDGE, targetRect.top + targetRect.height / 2 - POPOVER_H / 2))}px`
+    } else if (placement === 'left') {
+      const rawRight = window.innerWidth - targetRect.left + GAP
+      style.right = `${Math.min(rawRight, window.innerWidth - POPOVER_W - EDGE)}px`
+      style.top = `${Math.max(EDGE, Math.min(window.innerHeight - POPOVER_H - EDGE, targetRect.top + targetRect.height / 2 - POPOVER_H / 2))}px`
     } else {
-      // Viewport center
-      popoverStyle.top = '50%'
-      popoverStyle.left = '50%'
-      popoverStyle.transform = 'translate(-50%, -50%)'
+      style.top = '50%'
+      style.left = '50%'
+      style.transform = 'translate(-50%, -50%)'
     }
 
-    return popoverStyle
+    return style
   }
+
+  // ─── Spotlight highlight style (box-shadow replaces backdrop) ────────
+  const getSpotlightStyle = (): React.CSSProperties | null => {
+    if (!targetRect) return null
+    const pad = 6
+    return {
+      position: 'fixed',
+      top: targetRect.top - pad,
+      left: targetRect.left - pad,
+      width: targetRect.width + pad * 2,
+      height: targetRect.height + pad * 2,
+      borderRadius: '4px',
+      zIndex: 9991,
+      // The giant spread shadow is the "backdrop" — the element itself stays lit
+      boxShadow: '0 0 0 9999px rgba(0,0,0,0.65)',
+      border: '2px solid oklch(0.68 0.16 200)',
+      outline: '2px solid oklch(0.68 0.16 200 / 0.3)',
+      outlineOffset: '3px',
+    }
+  }
+
+  const currentStep = isActive ? TOUR_STEPS[currentStepIndex] : null
 
   return (
     <TourContext.Provider value={{ isActive, currentStepIndex, startTour, stopTour, nextStep, prevStep, currentStep }}>
@@ -279,46 +311,57 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
       <AnimatePresence>
         {isActive && (
-          <div className="fixed inset-0 z-[9990] overflow-hidden pointer-events-none">
-            {/* Darkened backdrop */}
+          <>
+            {/* ── Clickable dismiss layer behind spotlight ── */}
             <motion.div
+              key="tour-dismiss"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={stopTour}
-              className="absolute inset-0 bg-black pointer-events-auto cursor-pointer backdrop-blur-[1px]"
+              className="fixed inset-0 z-[9990] cursor-pointer"
+              style={{ background: 'transparent' }}
             />
 
-            {/* Glowing target element highlight box */}
-            {targetRect && (
+            {/* ── Spotlight highlight (box-shadow creates the dark surround) ── */}
+            <AnimatePresence mode="wait">
+              {targetRect && (
+                <motion.div
+                  key={`spotlight-${currentStepIndex}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  style={getSpotlightStyle()!}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* ── Dark overlay for center/no-target steps ── */}
+            {!targetRect && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{
-                  opacity: 1,
-                  scale: 1,
-                  top: targetRect.top - 6,
-                  left: targetRect.left - 6,
-                  width: targetRect.width + 12,
-                  height: targetRect.height + 12,
-                }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed border-2 border-primary bg-primary/[0.04] rounded-sm glow-primary z-[9991]"
+                key="tour-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.65 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black z-[9990]"
               />
             )}
 
-            {/* Glassmorphic Tour Popover */}
+            {/* ── Tour Popover ── */}
             <motion.div
-              style={getPopoverStyle()}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2 }}
-              className="glass-panel border border-border shadow-2xl p-5 rounded-md pointer-events-auto flex flex-col space-y-4"
+              key={`popover-${currentStepIndex}`}
+              style={{ ...getPopoverStyle(), backgroundColor: 'var(--card)', backdropFilter: 'blur(16px)' }}
+              initial={{ opacity: 0, y: 8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="border border-border shadow-2xl p-5 rounded-md pointer-events-auto flex flex-col space-y-4"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border/40 pb-2">
                 <div className="flex items-center gap-1.5 text-primary">
-                  <Sparkles className="h-4.5 w-4.5" />
+                  <Sparkles className="h-4 w-4" />
                   <span className="text-[10px] font-bold uppercase tracking-wider">System Guide</span>
                 </div>
                 <button
@@ -332,22 +375,22 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
               {/* Title & Body */}
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className="h-6 px-2 flex items-center justify-center bg-primary/10 border border-primary/20 text-primary font-mono text-xs rounded font-bold">
+                  <span className="h-6 px-2 flex items-center justify-center bg-primary/10 border border-primary/20 text-primary font-mono text-xs rounded-sm font-bold shrink-0">
                     {String(currentStepIndex + 1).padStart(2, '0')}
                   </span>
-                  <h3 className="font-bold text-sm text-foreground tracking-tight">
+                  <h3 className="font-bold text-sm text-foreground tracking-tight leading-tight">
                     {currentStep?.title}
                   </h3>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {currentStep?.content}
                 </p>
               </div>
 
               {/* Footer navigation */}
               <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                {/* Dots indicator */}
-                <div className="flex items-center gap-1.5">
+                {/* Progress dots */}
+                <div className="flex items-center gap-1">
                   {TOUR_STEPS.map((_, idx) => (
                     <span
                       key={idx}
@@ -369,14 +412,14 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                   )}
                   <button
                     onClick={nextStep}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:brightness-110 shadow-sm rounded-sm transition-all duration-200 glow-primary"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:brightness-110 shadow-sm rounded-sm transition-all duration-200"
                   >
                     {currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'} <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
             </motion.div>
-          </div>
+          </>
         )}
       </AnimatePresence>
     </TourContext.Provider>
