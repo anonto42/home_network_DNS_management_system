@@ -81,6 +81,16 @@ func main() {
 	}
 	defer database.Close()
 
+	// Load persisted settings — override CLI defaults if user has saved preferences.
+	savedSettings := database.GetSettings()
+	if v, ok := savedSettings["upstream_dns"]; ok && v != "" {
+		*upstreamDNS = v
+		*upstreamTLS = strings.HasSuffix(v, ":853")
+	}
+	if v, ok := savedSettings["block_nxdomain"]; ok {
+		*blockNX = v == "true"
+	}
+
 	dnsCfg := &dns.Config{
 		BlockNXDOMAIN: *blockNX,
 		CacheSize:     *cacheSize,

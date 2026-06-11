@@ -5,6 +5,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -28,6 +29,10 @@ type Handler struct {
 	forwarder *PooledForwarder
 	started   time.Time
 	blockNX   bool
+
+	rulesMu      sync.RWMutex
+	rulesCache   []models.SteeringRule
+	rulesLoadedAt time.Time
 }
 
 func NewHandler(database *db.DB, cfg *Config) *Handler {
@@ -151,14 +156,19 @@ func (h *Handler) handle(msg *dns.Msg, clientIP, protocol string) (*dns.Msg, mod
 		return h.buildResponse(msg, blockedIPResp, 60, h.blockNX), models.ActionBlocked
 	}
 
-	// Evaluate steering rules in priority order
-	for _, rule := range h.db.GetSteeringRules() {
-		if !rule.Enabled || !matchesCondition(rule, domain, clientIP, qtypeStr) {
+	// Evaluate steering rules in priority order.
+	for _, rule := range h.getSteeringRules() {
+		if !rule.Enabled {
 			continue
 		}
-		entry := base
+		if !matchesCondition(rule, domain, clientIP, qtypeStr) {
+			continue
+		}
+		slog.Debug("steering rule matched", "rule", rule.Name, "action", rule.ActionType)
+
 		switch rule.ActionType {
 		case "Block":
+			entry := base
 			entry.Action = models.ActionBlocked
 			entry.ResponseCode = "BLOCKED"
 			entry.ResolvedIP = blockedIPResp
@@ -166,53 +176,52 @@ func (h *Handler) handle(msg *dns.Msg, clientIP, protocol string) (*dns.Msg, mod
 			entry.AnswerCount = 1
 			h.db.LogQuery(entry)
 			return h.buildResponse(msg, blockedIPResp, 60, h.blockNX), models.ActionBlocked
+
 		case "Redirect":
-			if rule.ActionTarget != "" {
+			// Return the target IP directly.
+			if qtype == dns.TypeA && rule.ActionTarget != "" {
+				entry := base
 				entry.Action = models.ActionCustom
 				entry.ResponseCode = "NOERROR"
 				entry.ResolvedIP = rule.ActionTarget
 				entry.AllAnswers = rule.ActionTarget
 				entry.AnswerCount = 1
-				entry.TTL = 300
+				entry.TTL = 60
 				h.db.LogQuery(entry)
-				return h.buildResponse(msg, rule.ActionTarget, 300, false), models.ActionCustom
+				return h.buildResponse(msg, rule.ActionTarget, 60, false), models.ActionCustom
 			}
+
 		case "Forward":
-			if rule.ActionTarget != "" {
-				client := &dns.Client{Net: "udp", Timeout: 3 * time.Second}
-				upAddr := rule.ActionTarget
-				start := time.Now()
-				resp, _, err := client.Exchange(msg, upAddr)
-				latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
-				if err != nil {
-					entry.Action = models.ActionError
-					entry.ResponseCode = "SERVFAIL"
-					entry.UpstreamResolver = upAddr
-					entry.LatencyMs = latencyMs
-					h.db.LogQuery(entry)
-					errResp := new(dns.Msg)
-					errResp.SetRcode(msg, dns.RcodeServerFailure)
-					return errResp, models.ActionError
-				}
-				firstIP, allAnswers, answerCount, ttl := extractAnswerInfo(resp.Answer)
-				for _, rr := range resp.Answer {
-					if a, ok := rr.(*dns.A); ok {
-						h.cache.Set(domain, a.A.String(), a.Hdr.Ttl)
-						break
-					}
-				}
-				entry.Action = models.ActionForwarded
-				entry.ResponseCode = dns.RcodeToString[resp.Rcode]
-				entry.ResolvedIP = firstIP
-				entry.AllAnswers = allAnswers
-				entry.AnswerCount = answerCount
-				entry.TTL = ttl
-				entry.UpstreamResolver = upAddr
-				entry.LatencyMs = latencyMs
-				h.db.LogQuery(entry)
-				return resp, models.ActionForwarded
+			// Send to a specific upstream instead of the default.
+			target := rule.ActionTarget
+			if target == "" {
+				break
 			}
+			// Ensure port is present.
+			if !strings.Contains(target, ":") {
+				target = target + ":53"
+			}
+			start := time.Now()
+			resp, err := forwardToUpstream(msg, target)
+			latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
+			if err != nil {
+				slog.Warn("steering forward failed", "rule", rule.Name, "target", target, "error", err)
+				break // fall through to default resolution
+			}
+			firstIP, allAnswers, answerCount, ttl := extractAnswerInfo(resp.Answer)
+			entry := base
+			entry.Action = models.ActionForwarded
+			entry.ResponseCode = dns.RcodeToString[resp.Rcode]
+			entry.ResolvedIP = firstIP
+			entry.AllAnswers = allAnswers
+			entry.AnswerCount = answerCount
+			entry.TTL = ttl
+			entry.UpstreamResolver = target
+			entry.LatencyMs = latencyMs
+			h.db.LogQuery(entry)
+			return resp, models.ActionForwarded
 		}
+		break // first matching rule wins
 	}
 
 	if ip := h.db.GetCustomRecord(domain); ip != "" {
@@ -308,6 +317,74 @@ func (h *Handler) buildResponse(req *dns.Msg, ip string, ttl uint32, nxdomain bo
 
 func (h *Handler) SetPrimaryUpstream(addr string, tls bool) {
 	h.forwarder.SetPrimaryUpstream(addr, tls)
+}
+
+func (h *Handler) SetBlockNXDOMAIN(v bool) {
+	h.blockNX = v
+}
+
+// getSteeringRules returns cached rules, refreshing every 10 seconds.
+func (h *Handler) getSteeringRules() []models.SteeringRule {
+	h.rulesMu.RLock()
+	if time.Since(h.rulesLoadedAt) < 10*time.Second {
+		rules := h.rulesCache
+		h.rulesMu.RUnlock()
+		return rules
+	}
+	h.rulesMu.RUnlock()
+
+	rules := h.db.GetSteeringRules()
+	h.rulesMu.Lock()
+	h.rulesCache = rules
+	h.rulesLoadedAt = time.Now()
+	h.rulesMu.Unlock()
+	return rules
+}
+
+// matchesCondition returns true if the query satisfies the rule's condition.
+func matchesCondition(rule models.SteeringRule, domain, clientIP, qtypeStr string) bool {
+	val := strings.ToLower(strings.TrimSpace(rule.ConditionValue))
+	switch rule.ConditionType {
+	case "Domain":
+		// Support wildcard prefix: *.example.com matches sub.example.com and example.com
+		if strings.HasPrefix(val, "*.") {
+			suffix := val[2:]
+			return domain == suffix || strings.HasSuffix(domain, "."+suffix)
+		}
+		return domain == val
+	case "Client IP":
+		// Support CIDR (192.168.1.0/24) and exact IP
+		if strings.Contains(val, "/") {
+			_, ipNet, err := net.ParseCIDR(val)
+			if err != nil {
+				return false
+			}
+			ip := net.ParseIP(clientIP)
+			return ip != nil && ipNet.Contains(ip)
+		}
+		return clientIP == val
+	case "Query Type":
+		// Comma-separated list: "A, AAAA"
+		for _, t := range strings.Split(val, ",") {
+			if strings.TrimSpace(t) == strings.ToLower(qtypeStr) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+// forwardToUpstream sends a query to a specific upstream address and returns the response.
+func forwardToUpstream(msg *dns.Msg, addr string) (*dns.Msg, error) {
+	tls := strings.HasSuffix(addr, ":853")
+	netType := "udp"
+	if tls {
+		netType = "tcp-tls"
+	}
+	client := &dns.Client{Net: netType, Timeout: 4 * time.Second}
+	resp, _, err := client.Exchange(msg, addr)
+	return resp, err
 }
 
 func (h *Handler) UptimeSeconds() float64 {

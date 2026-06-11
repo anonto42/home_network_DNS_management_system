@@ -261,16 +261,17 @@ func (h *Handler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	h.db.SaveSettings(body)
 
-	// Apply upstream DNS change immediately without restart.
+	// Apply changes immediately without restart.
 	if addr, ok := body["upstream_dns"]; ok && addr != "" {
-		// Addresses ending in :853 or saved with "+tls" suffix use DoT.
 		tls := strings.HasSuffix(addr, ":853")
-		// Normalise: if user picked a plain provider name without port, add DoT port.
 		if !strings.Contains(addr, ":") {
 			addr = addr + ":853"
 			tls = true
 		}
 		h.dns.SetPrimaryUpstream(addr, tls)
+	}
+	if v, ok := body["block_nxdomain"]; ok {
+		h.dns.SetBlockNXDOMAIN(v == "true")
 	}
 
 	respond(w, 200, map[string]bool{"ok": true})

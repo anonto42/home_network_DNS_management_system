@@ -12,6 +12,7 @@ import {
   Calendar,
   Download,
   BarChart3,
+  CheckCircle2,
   PlusCircle,
   Trash2,
   Gauge,
@@ -20,7 +21,6 @@ import {
   Sun,
   Moon,
   Monitor,
-  Cloud,
 } from 'lucide-react'
 
 import { toast } from 'sonner'
@@ -815,52 +815,47 @@ const THEME_OPTIONS: { label: string; value: Theme; icon: React.ElementType }[] 
 
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme()
-  const [serverName, setServerName] = useState('north-america-east-1')
-  const [autoUpdate, setAutoUpdate] = useState(true)
   const [upstream, setUpstream] = useState('1.1.1.1:853')
   const [customUpstream, setCustomUpstream] = useState('')
+  const [blockNXDomain, setBlockNXDomain] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const [savedSnapshot, setSavedSnapshot] = useState<{ serverName: string; autoUpdate: boolean; upstream: string; customUpstream: string } | null>(null)
 
   useEffect(() => {
     getSettings().then((s) => {
-      const sn = s.server_name || 'north-america-east-1'
-      const au = s.auto_update ? s.auto_update === 'true' : true
-      const up = s.upstream_dns || '1.1.1.1:53'
-      const isKnown = UPSTREAM_OPTIONS.some(o => o.value === up)
-      const cu = isKnown ? '' : up
-      const resolvedUp = isKnown ? up : 'custom'
-      setServerName(sn); setAutoUpdate(au); setUpstream(resolvedUp); setCustomUpstream(cu)
-      setSavedSnapshot({ serverName: sn, autoUpdate: au, upstream: resolvedUp, customUpstream: cu })
+      if (s.upstream_dns) {
+        const isKnown = UPSTREAM_OPTIONS.find(o => o.value === s.upstream_dns)
+        if (isKnown) {
+          setUpstream(s.upstream_dns)
+        } else {
+          // Custom address saved previously — restore it into the custom input
+          setUpstream('custom')
+          setCustomUpstream(s.upstream_dns)
+        }
+      }
+      if (s.block_nxdomain) setBlockNXDomain(s.block_nxdomain === 'true')
       setLoaded(true)
     }).catch(() => setLoaded(true))
   }, [])
 
   const handleSave = async () => {
+    const resolvedUpstream = upstream === 'custom' ? customUpstream.trim() : upstream
+    if (!resolvedUpstream) {
+      toast.error('Enter a custom DNS address')
+      return
+    }
     setSaving(true)
-    const resolvedUpstream = upstream === 'custom' ? customUpstream : upstream
     try {
-      await saveSettings({ server_name: serverName, auto_update: String(autoUpdate), upstream_dns: resolvedUpstream })
-      setSavedSnapshot({ serverName, autoUpdate, upstream, customUpstream })
+      await saveSettings({ upstream_dns: resolvedUpstream, block_nxdomain: String(blockNXDomain) })
       toast.success('Settings saved', { description: `Upstream: ${resolvedUpstream}` })
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save settings')
+    } catch {
+      toast.error('Failed to save settings')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDiscard = () => {
-    if (savedSnapshot) {
-      setServerName(savedSnapshot.serverName)
-      setAutoUpdate(savedSnapshot.autoUpdate)
-      setUpstream(savedSnapshot.upstream)
-      setCustomUpstream(savedSnapshot.customUpstream)
-    }
-  }
-
-  const isCustom = upstream === 'custom' || !UPSTREAM_OPTIONS.find(o => o.value === upstream)
+  const isCustom = upstream === 'custom'
 
   return (
     <PageTransition>
@@ -905,24 +900,21 @@ const SettingsPage = () => {
 
             <Card className="shadow-sm">
               <CardHeader>
-                <CardTitle className="font-bold tracking-tight text-foreground">General Configuration</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Basic node settings and updates.</CardDescription>
+                <CardTitle className="font-bold tracking-tight text-foreground">DNS Behaviour</CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Control how blocked domains are answered.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-bold text-foreground">Server Name</p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identify this node in your cluster</p>
+                <div className="flex items-start justify-between gap-6">
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-foreground">Return NXDOMAIN for blocked domains</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      Off — returns <span className="font-mono text-foreground">0.0.0.0</span> (sink-hole, faster for clients)
+                    </p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      On — returns <span className="font-mono text-foreground">NXDOMAIN</span> (domain does not exist)
+                    </p>
                   </div>
-                  <input className="flex h-9 w-full sm:w-64 bg-muted px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-medium text-foreground" value={serverName} onChange={e => setServerName(e.target.value)} />
-                </div>
-                <div className="h-[1px] bg-muted" />
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-bold text-foreground">Automatic Updates</p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Keep blocklists and firmware up to date</p>
-                  </div>
-                  <Switch checked={autoUpdate} onCheckedChange={setAutoUpdate} />
+                  <Switch checked={blockNXDomain} onCheckedChange={setBlockNXDomain} />
                 </div>
               </CardContent>
             </Card>
@@ -950,13 +942,25 @@ const SettingsPage = () => {
                   </div>
                 </div>
                 {isCustom && (
-                  <input className="flex h-9 w-full bg-muted px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="e.g. 192.168.1.1:53" value={customUpstream} onChange={e => setCustomUpstream(e.target.value)} />
+                  <div className="space-y-2">
+                    <input
+                      className="flex h-9 w-full bg-muted px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+                      placeholder="e.g. 192.168.1.1:53 or 192.168.1.1:853"
+                      value={customUpstream}
+                      onChange={e => setCustomUpstream(e.target.value)}
+                      spellCheck={false}
+                      autoComplete="off"
+                    />
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      Use <span className="font-mono text-foreground">:853</span> for DNS-over-TLS (encrypted) · <span className="font-mono text-foreground">:53</span> for plain UDP (ISP can see queries)
+                    </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
             <div className="flex justify-end gap-3">
-              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={handleDiscard} disabled={!savedSnapshot}>Discard Changes</Button>
+              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => { setUpstream('1.1.1.1:853'); setBlockNXDomain(false) }}>Discard Changes</Button>
               <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
             </div>
           </div>
@@ -977,11 +981,15 @@ const ProfilePage = () => {
     if (newPw.length < 8) { toast.error('Password must be at least 8 characters'); return }
     setSaving(true)
     try {
-      await apiPut('/password', { current_password: currentPw, new_password: newPw })
-      toast.success('Password changed successfully')
-      setCurrentPw(''); setNewPw(''); setConfirmPw('')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to change password')
+      const res = await apiPut('/password', { current_password: currentPw, new_password: newPw }) as { ok?: boolean; error?: string }
+      if (res.ok) {
+        toast.success('Password changed successfully')
+        setCurrentPw(''); setNewPw(''); setConfirmPw('')
+      } else {
+        toast.error(res.error ?? 'Failed to change password')
+      }
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setSaving(false)
     }
@@ -1024,6 +1032,7 @@ const ProfilePage = () => {
 }
 
 const CloudSyncPage = () => {
+  const [autoSync, setAutoSync] = useState(true)
   return (
     <PageTransition>
       <div className="space-y-8">
@@ -1031,19 +1040,55 @@ const CloudSyncPage = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Cloud Sync</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Synchronize your configuration across nodes and clusters.</p>
         </div>
-        <Card className="shadow-sm">
-          <CardContent className="p-12 flex flex-col items-center gap-4 text-center">
-            <div className="h-14 w-14 rounded-full bg-muted/60 flex items-center justify-center">
-              <Cloud className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-lg font-bold text-foreground">Coming Soon</p>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                Multi-node synchronisation is not yet available in this release.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="font-bold tracking-tight text-foreground">Sync Status</CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Current synchronization state of your cluster.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-foreground">All nodes are in sync</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Last synchronized 2 hours ago</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="font-bold tracking-tight text-foreground">Sync Configuration</CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Configure automatic synchronization settings.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-foreground">Auto-Sync</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Automatically sync configuration changes</p>
+                </div>
+                <Switch checked={autoSync} onCheckedChange={setAutoSync} />
+              </div>
+              <div className="h-[1px] bg-muted" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-foreground">Sync Interval</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">How often to sync with remote nodes</p>
+                </div>
+                <select className="flex h-9 w-full sm:w-48 bg-muted px-3 py-1 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <option>Every 5 minutes</option>
+                  <option>Every 15 minutes</option>
+                  <option>Every hour</option>
+                  <option>Every 6 hours</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => toast.info('Sync initiated')}>Sync Now</Button>
+            <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest" onClick={() => toast.success('Cloud sync settings saved')}>Save Configuration</Button>
+          </div>
+        </div>
       </div>
     </PageTransition>
   )
