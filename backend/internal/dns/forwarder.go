@@ -40,6 +40,20 @@ func NewPooledForwarder(upstreams []Upstream) *PooledForwarder {
 	return f
 }
 
+// SetPrimaryUpstream replaces the first upstream (user-selected provider) at runtime.
+// The fallback upstreams (index 1+) are preserved.
+func (f *PooledForwarder) SetPrimaryUpstream(addr string, tls bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.upstreams) == 0 {
+		f.upstreams = []Upstream{{Addr: addr, Timeout: 4 * time.Second, TLS: tls}}
+	} else {
+		f.upstreams[0] = Upstream{Addr: addr, Timeout: 4 * time.Second, TLS: tls}
+	}
+	f.healthy[0] = true
+	slog.Info("upstream changed", "addr", addr, "tls", tls)
+}
+
 // CurrentUpstream returns the address of the first healthy upstream, for logging purposes.
 func (f *PooledForwarder) CurrentUpstream() string {
 	f.mu.RLock()
@@ -88,12 +102,16 @@ func (f *PooledForwarder) Forward(req *dns.Msg) (*dns.Msg, error) {
 
 func (f *PooledForwarder) healthLoop() {
 	ticker := time.NewTicker(30 * time.Second)
-	probeClient := &dns.Client{Timeout: 2 * time.Second}
 	msg := new(dns.Msg)
 	msg.SetQuestion("google.com.", dns.TypeA)
 
 	for range ticker.C {
 		for i, up := range f.upstreams {
+			netType := "udp"
+			if up.TLS {
+				netType = "tcp-tls"
+			}
+			probeClient := &dns.Client{Net: netType, Timeout: 3 * time.Second}
 			_, _, err := probeClient.Exchange(msg, up.Addr)
 			f.mu.Lock()
 			wasHealthy := f.healthy[i]

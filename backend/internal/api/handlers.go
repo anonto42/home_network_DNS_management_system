@@ -95,7 +95,15 @@ func validDomain(domain string) bool {
 	if len(domain) == 0 || len(domain) > maxDomainLen {
 		return false
 	}
-	for _, c := range domain {
+	// Allow wildcard prefix (*.example.com) — strip it before validating the rest.
+	d := domain
+	if strings.HasPrefix(d, "*.") {
+		d = d[2:]
+	}
+	if len(d) == 0 {
+		return false
+	}
+	for _, c := range d {
 		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 			(c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_') {
 			return false
@@ -252,6 +260,19 @@ func (h *Handler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.db.SaveSettings(body)
+
+	// Apply upstream DNS change immediately without restart.
+	if addr, ok := body["upstream_dns"]; ok && addr != "" {
+		// Addresses ending in :853 or saved with "+tls" suffix use DoT.
+		tls := strings.HasSuffix(addr, ":853")
+		// Normalise: if user picked a plain provider name without port, add DoT port.
+		if !strings.Contains(addr, ":") {
+			addr = addr + ":853"
+			tls = true
+		}
+		h.dns.SetPrimaryUpstream(addr, tls)
+	}
+
 	respond(w, 200, map[string]bool{"ok": true})
 }
 

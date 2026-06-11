@@ -802,9 +802,9 @@ const SteeringPage = () => {
 }
 
 const UPSTREAM_OPTIONS = [
-  { label: 'Cloudflare (1.1.1.1)', value: '1.1.1.1:53' },
-  { label: 'Google (8.8.8.8)', value: '8.8.8.8:53' },
-  { label: 'Quad9 (9.9.9.9)', value: '9.9.9.9:53' },
+  { label: 'Cloudflare (1.1.1.1) — DoT', value: '1.1.1.1:853' },
+  { label: 'Google (8.8.8.8) — DoT', value: '8.8.8.8:853' },
+  { label: 'Quad9 (9.9.9.9) — DoT', value: '9.9.9.9:853' },
 ]
 
 const THEME_OPTIONS: { label: string; value: Theme; icon: React.ElementType }[] = [
@@ -817,7 +817,7 @@ const SettingsPage = () => {
   const { theme, setTheme } = useTheme()
   const [serverName, setServerName] = useState('north-america-east-1')
   const [autoUpdate, setAutoUpdate] = useState(true)
-  const [upstream, setUpstream] = useState('1.1.1.1:53')
+  const [upstream, setUpstream] = useState('1.1.1.1:853')
   const [customUpstream, setCustomUpstream] = useState('')
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)

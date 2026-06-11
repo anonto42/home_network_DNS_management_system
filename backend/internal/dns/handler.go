@@ -306,6 +306,10 @@ func (h *Handler) buildResponse(req *dns.Msg, ip string, ttl uint32, nxdomain bo
 	return resp
 }
 
+func (h *Handler) SetPrimaryUpstream(addr string, tls bool) {
+	h.forwarder.SetPrimaryUpstream(addr, tls)
+}
+
 func (h *Handler) UptimeSeconds() float64 {
 	return time.Since(h.started).Seconds()
 }

@@ -12,9 +12,7 @@ services:
       - NET_BIND_SERVICE
     volumes:
       - dns-data:/app/data
-    # All config is via CLI flags — no env vars needed
-    # Override individual flags here if needed, e.g.:
-    #   command: ["./dns-server", "--upstream", "9.9.9.9:53", "--log-prune", "168h"]
+    command: ["./dns-server", "--dns-addr", "192.168.0.111"]
 
 volumes:
   dns-data:

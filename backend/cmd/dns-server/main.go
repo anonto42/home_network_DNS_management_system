@@ -22,11 +22,13 @@ import (
 
 var (
 	dnsPort     = flag.Int("dns-port", 53, "DNS server port")
+	dnsAddr     = flag.String("dns-addr", "", "DNS bind address (default: all interfaces)")
 	httpPort    = flag.Int("http-port", 8080, "HTTP API port")
 	dbPath      = flag.String("db", "data/dns.db", "SQLite database path")
 	blockNX     = flag.Bool("block-nxdomain", false, "Return NXDOMAIN for blocked domains")
 	cacheSize   = flag.Int("cache-size", 1000, "DNS cache size")
-	upstreamDNS = flag.String("upstream", "1.1.1.1:53", "Upstream DNS server")
+	upstreamDNS = flag.String("upstream", "1.1.1.1:853", "Upstream DNS server (host:port)")
+	upstreamTLS = flag.Bool("upstream-tls", true, "Use DNS-over-TLS for upstream queries")
 	staticDir   = flag.String("static", "", "Directory with static files to serve at /")
 	logPrune    = flag.Duration("log-prune", 0, "Auto-prune logs older than this (e.g. 72h)")
 	logFormat   = flag.String("log-format", "text", "Log format: text or json")
@@ -83,8 +85,8 @@ func main() {
 		BlockNXDOMAIN: *blockNX,
 		CacheSize:     *cacheSize,
 		Upstreams: []dns.Upstream{
-			{Addr: *upstreamDNS, Timeout: 3 * time.Second},
-			{Addr: "8.8.8.8:53", Timeout: 5 * time.Second},
+			{Addr: *upstreamDNS, Timeout: 4 * time.Second, TLS: *upstreamTLS},
+			{Addr: "8.8.8.8:853", Timeout: 6 * time.Second, TLS: *upstreamTLS},
 		},
 	}
 	dnsHandler := dns.NewHandler(database, dnsCfg)
@@ -94,7 +96,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	// --- UDP DNS ---
-	udpConn, err := listenUDPWithRetry(*dnsPort)
+	udpConn, err := listenUDPWithRetry(*dnsAddr, *dnsPort)
 	if err != nil {
 		slog.Error("listen UDP", "port", *dnsPort, "error", err)
 		os.Exit(1)
@@ -125,7 +127,7 @@ func main() {
 	}()
 
 	// --- TCP DNS ---
-	tcpAddr := net.TCPAddr{Port: *dnsPort}
+	tcpAddr := net.TCPAddr{IP: net.ParseIP(*dnsAddr), Port: *dnsPort}
 	tcpListener, err := net.ListenTCP("tcp", &tcpAddr)
 	if err != nil {
 		slog.Warn("TCP listener unavailable (non-fatal)", "port", *dnsPort, "error", err)
@@ -249,9 +251,9 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 	})
 }
 
-func listenUDPWithRetry(port int) (*net.UDPConn, error) {
+func listenUDPWithRetry(addr string, port int) (*net.UDPConn, error) {
 	for i := 0; i < 10; i++ {
-		udpAddr := net.UDPAddr{Port: port}
+		udpAddr := net.UDPAddr{IP: net.ParseIP(addr), Port: port}
 		conn, err := net.ListenUDP("udp", &udpAddr)
 		if err == nil {
 			return conn, nil
