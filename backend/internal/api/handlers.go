@@ -210,15 +210,14 @@ func (h *Handler) AddToBlocklist(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
-// RemoveFromBlocklist godoc
-// @Summary      Remove from blocklist
-// @Description  Unblocks a domain
+// Login godoc
+// @Summary      Authenticate
+// @Description  Validates credentials and returns a session token
 // @Accept       json
 // @Produce      json
-// @Param        domain  body      models.RemoveBlockRequest  true  "Domain name"
-// @Success      200     {object}  map[string]bool
-// @Failure      400     {object}  map[string]string
-// @Router       /api/blocklist [delete]
+// @Success      200  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Router       /api/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var body struct {
@@ -256,6 +255,15 @@ func (h *Handler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, map[string]bool{"ok": true})
 }
 
+// RemoveFromBlocklist godoc
+// @Summary      Remove from blocklist
+// @Description  Unblocks a domain
+// @Accept       json
+// @Produce      json
+// @Param        domain  body      models.RemoveBlockRequest  true  "Domain name"
+// @Success      200     {object}  map[string]bool
+// @Failure      400     {object}  map[string]string
+// @Router       /api/blocklist [delete]
 func (h *Handler) RemoveFromBlocklist(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 

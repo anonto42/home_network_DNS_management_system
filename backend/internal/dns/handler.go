@@ -151,6 +151,70 @@ func (h *Handler) handle(msg *dns.Msg, clientIP, protocol string) (*dns.Msg, mod
 		return h.buildResponse(msg, blockedIPResp, 60, h.blockNX), models.ActionBlocked
 	}
 
+	// Evaluate steering rules in priority order
+	for _, rule := range h.db.GetSteeringRules() {
+		if !rule.Enabled || !matchesCondition(rule, domain, clientIP, qtypeStr) {
+			continue
+		}
+		entry := base
+		switch rule.ActionType {
+		case "Block":
+			entry.Action = models.ActionBlocked
+			entry.ResponseCode = "BLOCKED"
+			entry.ResolvedIP = blockedIPResp
+			entry.AllAnswers = blockedIPResp
+			entry.AnswerCount = 1
+			h.db.LogQuery(entry)
+			return h.buildResponse(msg, blockedIPResp, 60, h.blockNX), models.ActionBlocked
+		case "Redirect":
+			if rule.ActionTarget != "" {
+				entry.Action = models.ActionCustom
+				entry.ResponseCode = "NOERROR"
+				entry.ResolvedIP = rule.ActionTarget
+				entry.AllAnswers = rule.ActionTarget
+				entry.AnswerCount = 1
+				entry.TTL = 300
+				h.db.LogQuery(entry)
+				return h.buildResponse(msg, rule.ActionTarget, 300, false), models.ActionCustom
+			}
+		case "Forward":
+			if rule.ActionTarget != "" {
+				client := &dns.Client{Net: "udp", Timeout: 3 * time.Second}
+				upAddr := rule.ActionTarget
+				start := time.Now()
+				resp, _, err := client.Exchange(msg, upAddr)
+				latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
+				if err != nil {
+					entry.Action = models.ActionError
+					entry.ResponseCode = "SERVFAIL"
+					entry.UpstreamResolver = upAddr
+					entry.LatencyMs = latencyMs
+					h.db.LogQuery(entry)
+					errResp := new(dns.Msg)
+					errResp.SetRcode(msg, dns.RcodeServerFailure)
+					return errResp, models.ActionError
+				}
+				firstIP, allAnswers, answerCount, ttl := extractAnswerInfo(resp.Answer)
+				for _, rr := range resp.Answer {
+					if a, ok := rr.(*dns.A); ok {
+						h.cache.Set(domain, a.A.String(), a.Hdr.Ttl)
+						break
+					}
+				}
+				entry.Action = models.ActionForwarded
+				entry.ResponseCode = dns.RcodeToString[resp.Rcode]
+				entry.ResolvedIP = firstIP
+				entry.AllAnswers = allAnswers
+				entry.AnswerCount = answerCount
+				entry.TTL = ttl
+				entry.UpstreamResolver = upAddr
+				entry.LatencyMs = latencyMs
+				h.db.LogQuery(entry)
+				return resp, models.ActionForwarded
+			}
+		}
+	}
+
 	if ip := h.db.GetCustomRecord(domain); ip != "" {
 		if qtype == dns.TypeA {
 			entry := base
@@ -256,4 +320,67 @@ func (h *Handler) CacheHits() int64 {
 
 func (h *Handler) CacheMisses() int64 {
 	return h.cache.Misses()
+}
+
+func matchesCondition(rule models.SteeringRule, domain, clientIP, qtypeStr string) bool {
+	switch rule.ConditionType {
+	case "Domain":
+		return matchSteeringDomain(rule.ConditionValue, domain)
+	case "Client IP":
+		return matchCIDR(rule.ConditionValue, clientIP)
+	case "Query Type":
+		for _, t := range strings.Split(rule.ConditionValue, ",") {
+			if strings.EqualFold(strings.TrimSpace(t), qtypeStr) {
+				return true
+			}
+		}
+	case "Time Range":
+		return matchTimeRange(rule.ConditionValue)
+	}
+	return false
+}
+
+func matchSteeringDomain(pattern, domain string) bool {
+	pattern = strings.ToLower(strings.TrimSpace(pattern))
+	if strings.HasPrefix(pattern, "*.") {
+		suffix := pattern[2:]
+		return domain == suffix || strings.HasSuffix(domain, "."+suffix)
+	}
+	return domain == pattern
+}
+
+func matchCIDR(cidr, ip string) bool {
+	_, network, err := net.ParseCIDR(cidr)
+	if err != nil {
+		parsed := net.ParseIP(cidr)
+		target := net.ParseIP(ip)
+		return parsed != nil && target != nil && parsed.Equal(target)
+	}
+	parsed := net.ParseIP(ip)
+	return parsed != nil && network.Contains(parsed)
+}
+
+func matchTimeRange(r string) bool {
+	parts := strings.SplitN(r, "-", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	now := time.Now()
+	cur := now.Hour()*60 + now.Minute()
+	start := parseHHMM(parts[0])
+	end := parseHHMM(parts[1])
+	return start >= 0 && end >= 0 && cur >= start && cur <= end
+}
+
+func parseHHMM(s string) int {
+	p := strings.SplitN(strings.TrimSpace(s), ":", 2)
+	if len(p) != 2 {
+		return -1
+	}
+	h, err1 := strconv.Atoi(p[0])
+	m, err2 := strconv.Atoi(p[1])
+	if err1 != nil || err2 != nil || h < 0 || h > 23 || m < 0 || m > 59 {
+		return -1
+	}
+	return h*60 + m
 }
