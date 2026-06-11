@@ -961,15 +961,11 @@ const ProfilePage = () => {
     if (newPw.length < 8) { toast.error('Password must be at least 8 characters'); return }
     setSaving(true)
     try {
-      const res = await apiPut('/password', { current_password: currentPw, new_password: newPw }) as { ok?: boolean; error?: string }
-      if (res.ok) {
-        toast.success('Password changed successfully')
-        setCurrentPw(''); setNewPw(''); setConfirmPw('')
-      } else {
-        toast.error(res.error ?? 'Failed to change password')
-      }
-    } catch {
-      toast.error('Network error — please try again')
+      await apiPut('/password', { current_password: currentPw, new_password: newPw })
+      toast.success('Password changed successfully')
+      setCurrentPw(''); setNewPw(''); setConfirmPw('')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to change password')
     } finally {
       setSaving(false)
     }

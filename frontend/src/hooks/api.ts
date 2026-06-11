@@ -21,6 +21,10 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
     window.location.href = '/login'
     throw new Error('unauthorized')
   }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body?.error || `Request failed (${res.status})`)
+  }
   return res
 }
 

@@ -373,7 +373,10 @@ func (db *DB) RemoveFromBlocklist(domain string) {
 
 func (db *DB) IsBlocked(domain string) bool {
 	var count int
-	if err := db.conn.QueryRow("SELECT COUNT(*) FROM blocklist WHERE ? LIKE CASE WHEN wildcard THEN '%' || domain ELSE domain END", domain).Scan(&count); err != nil {
+	if err := db.conn.QueryRow(
+		"SELECT COUNT(*) FROM blocklist WHERE (wildcard = 0 AND domain = ?) OR (wildcard = 1 AND (? = domain OR ? LIKE '%.' || domain))",
+		domain, domain, domain,
+	).Scan(&count); err != nil {
 		slog.Error("is blocked query failed", "error", err)
 	}
 	return count > 0
