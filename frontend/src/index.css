@@ -178,3 +178,29 @@ body {
   background-color: var(--scrollbar-thumb-hover);
 }
 
+/* ─── Responsive Utilities ─────────────────────────────── */
+
+/* Ensure tables scroll horizontally on small screens */
+.overflow-x-auto table {
+  min-width: 520px;
+}
+
+@media (max-width: 480px) {
+  .overflow-x-auto table {
+    min-width: 360px;
+  }
+}
+
+/* Prevent horizontal page overflow */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Comfortable touch tap targets */
+@media (pointer: coarse) {
+  button, [role="button"] {
+    min-height: 40px;
+  }
+}
+
+

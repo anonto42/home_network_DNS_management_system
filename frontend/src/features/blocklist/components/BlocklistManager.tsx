@@ -142,7 +142,7 @@ export default function BlocklistManager() {
     ))
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6 md:space-y-8">
       <ConfirmDialog
         open={unblockTarget !== null}
         title="Unblock domain?"
@@ -154,9 +154,9 @@ export default function BlocklistManager() {
 
       {/* Block Domain Modal Overlay */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
-          <div className="relative z-10 w-full max-w-lg bg-card border border-border shadow-2xl rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative z-10 w-full sm:max-w-lg bg-card border border-border shadow-2xl sm:rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 bg-muted/20 border-b border-border">
               <div>
@@ -219,15 +219,15 @@ export default function BlocklistManager() {
       )}
 
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Blocklist</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Blocklist</h2>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
             Block domains from resolving across your network.
           </p>
         </div>
         <Button
-          className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary"
+          className="w-full sm:w-auto shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary"
           onClick={() => setShowForm(true)}
         >
           <Ban className="h-4 w-4" /> Block Domain

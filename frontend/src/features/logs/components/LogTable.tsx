@@ -113,9 +113,9 @@ export default function LogTable({ compact }: Props) {
         {/* Full page header — two-container toolbar, no title */}
         {!compact && (
           <CardHeader className="pb-3 bg-muted/5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {/* Left: search */}
-              <div className="relative w-full sm:w-64">
+            <div className="flex flex-col gap-3">
+              {/* Search - always full width */}
+              <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
                 <input
                   type="text"
@@ -125,16 +125,16 @@ export default function LogTable({ compact }: Props) {
                   className="w-full bg-muted/30 pl-9 pr-4 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:bg-background transition-all duration-200"
                 />
               </div>
-              {/* Right: filter pills + clear */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex bg-muted/50 p-1">
+              {/* Filter pills + clear */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap bg-muted/50 p-1 gap-0.5">
                   {(['all', 'allowed', 'blocked', 'cached'] as const).map((f) => (
                     <Button
                       key={f}
                       variant={filter === f ? 'secondary' : 'ghost'}
                       size="sm"
                       onClick={() => handleFilterChange(f)}
-                      className={`px-3 h-7 text-[10px] font-bold uppercase tracking-wider ${filter === f ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                      className={`px-2.5 sm:px-3 h-7 text-[10px] font-bold uppercase tracking-wider ${filter === f ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
                     >
                       {f}
                     </Button>
@@ -143,7 +143,7 @@ export default function LogTable({ compact }: Props) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1.5 text-[10px] font-bold uppercase tracking-widest text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-3"
+                  className="gap-1.5 text-[10px] font-bold uppercase tracking-widest text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-3 shrink-0"
                   onClick={() => setConfirmClear(true)}
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Clear

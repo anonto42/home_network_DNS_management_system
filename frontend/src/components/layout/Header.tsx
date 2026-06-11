@@ -182,8 +182,8 @@ export const Header: React.FC = () => {
   return (
     <header 
       className={cn(
-        "h-16 fixed top-0 right-0 bg-card flex justify-between items-center px-4 md:px-6 z-40 transition-all duration-300 shadow-sm",
-        isSidebarCollapsed ? 'w-full md:w-[calc(100%-72px)]' : 'w-full md:w-[calc(100%-256px)]'
+        "h-16 fixed top-0 right-0 left-0 bg-card flex justify-between items-center px-3 sm:px-4 md:px-6 z-40 transition-all duration-300 shadow-sm border-b border-border",
+        isSidebarCollapsed ? 'md:left-[72px]' : 'md:left-64'
       )}
     >
       <div className="flex items-center gap-2 md:gap-4 flex-1">
@@ -295,7 +295,7 @@ export const Header: React.FC = () => {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 mt-2 shadow-lg glass-panel border-border" align="end">
+            <PopoverContent className="w-[calc(100vw-32px)] sm:w-80 p-0 mt-2 shadow-lg glass-panel border-border" align="end">
               <div className="p-3 bg-muted/20 flex items-center justify-between border-b border-border">
                 <h4 className="font-bold text-[10px] uppercase tracking-widest text-foreground">Notifications ({unreadCount})</h4>
                 <div className="flex gap-2">

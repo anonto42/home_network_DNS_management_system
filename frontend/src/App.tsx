@@ -376,14 +376,14 @@ const Dashboard = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-6 md:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Network Overview</h2>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Network Overview</h2>
             <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Real-time monitoring for your DNS server.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* Time range selector dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -506,7 +506,7 @@ const Dashboard = () => {
         <StatsCards />
         <NetworkLoadChart />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8 items-stretch">
           <div className="lg:col-span-8 flex flex-col">
             <LogTable compact />
           </div>
@@ -692,9 +692,9 @@ const SteeringPage = () => {
 
       {/* Create rule modal overlay */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
-          <div className="relative z-10 w-full max-w-2xl bg-card border border-border shadow-2xl rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative z-10 w-full sm:max-w-2xl bg-card border border-border shadow-2xl sm:rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 bg-muted/20 border-b border-border">
               <div>
@@ -792,16 +792,16 @@ const SteeringPage = () => {
           </div>
         </div>
       )}
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Traffic Steering</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Traffic Steering</h1>
             <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
               Define routing rules to control how DNS traffic is resolved across your network.
             </p>
           </div>
-          <Button className="shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary" onClick={() => setShowForm(true)}>
+          <Button className="w-full sm:w-auto shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary" onClick={() => setShowForm(true)}>
             <PlusCircle className="h-4 w-4" /> New Rule
           </Button>
         </div>
@@ -1003,9 +1003,9 @@ const SettingsPage = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Settings</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Configure your DNS server and security preferences.</p>
         </div>
 
@@ -1103,9 +1103,9 @@ const SettingsPage = () => {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => { setUpstream('1.1.1.1:853'); setBlockNXDomain(false) }}>Discard Changes</Button>
-              <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+              <Button variant="outline" className="w-full sm:w-auto text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => { setUpstream('1.1.1.1:853'); setBlockNXDomain(false) }}>Discard Changes</Button>
+              <Button className="w-full sm:w-auto shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
             </div>
           </div>
         )}
@@ -1179,9 +1179,9 @@ const ProfilePage = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Profile</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Profile</h1>
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Manage your account details and preferences.</p>
         </div>
         <div className="grid gap-6">
@@ -1234,9 +1234,9 @@ const ProfilePage = () => {
               })}
             </CardContent>
           </Card>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={handleDiscard}>Discard</Button>
-            <Button className="shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+            <Button variant="outline" className="w-full sm:w-auto text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={handleDiscard}>Discard</Button>
+            <Button className="w-full sm:w-auto shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
           </div>
         </div>
       </div>
