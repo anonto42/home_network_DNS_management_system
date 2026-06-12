@@ -7,13 +7,12 @@ import {
   Copy,
   Trash2,
   ServerOff,
-  Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/clipboard'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -26,6 +25,9 @@ import {
 } from '@/components/ui/table'
 import { useRecordManager } from '../hooks/useRecordManager'
 import RecordModal from './RecordModal'
+import { PageHeader } from '@/components/ui/page-header'
+import { StatCard, StatsGrid } from '@/components/ui/stat-card'
+import { SearchInput } from '@/components/ui/search-input'
 
 const recordTypeStyles: Record<string, string> = {
   A:    'bg-sky-500/10 text-sky-600 dark:text-sky-400',
@@ -54,6 +56,15 @@ export default function RecordManager() {
       </TableRow>
     ))
 
+  const pageActions = (
+    <Button
+      className="w-full sm:w-auto shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary rounded-sm"
+      onClick={() => setShowForm(true)}
+    >
+      <PlusCircle className="h-4 w-4" /> New Record
+    </Button>
+  )
+
   return (
     <div className="w-full space-y-6 md:space-y-8">
       <ConfirmDialog
@@ -81,59 +92,33 @@ export default function RecordManager() {
       )}
 
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Local DNS Records</h2>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
-            Manage authoritative records for your local network environment.
-          </p>
-        </div>
-        <Button
-          className="w-full sm:w-auto shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-primary"
-          onClick={() => setShowForm(true)}
-        >
-          <PlusCircle className="h-4 w-4" /> New Record
-        </Button>
-      </div>
+      <PageHeader
+        title="Local DNS Records"
+        description="Manage authoritative records for your local network environment."
+        actions={pageActions}
+      />
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          {
-            label: 'Active Records',
-            value: loading ? null : entries.length,
-            icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
-            bg: 'bg-emerald-500/10',
-          },
-          {
-            label: 'Total Queries / 24h',
-            value: loading ? null : entries.length > 0 ? (entries.length * 30).toLocaleString() : '0',
-            icon: <Network className="h-5 w-5 text-primary" />,
-            bg: 'bg-primary/10',
-          },
-          {
-            label: 'Conflicts',
-            value: loading ? null : 0,
-            icon: <AlertCircle className="h-5 w-5 text-rose-500" />,
-            bg: 'bg-rose-500/10',
-          },
-        ].map(card => (
-          <Card key={card.label} className="shadow-sm glass-panel hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 rounded-lg">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className={`h-10 w-10 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
-                {card.icon}
-              </div>
-              <div>
-                {card.value == null
-                  ? <Skeleton className="h-7 w-16 mb-1" />
-                  : <p className="text-2xl font-bold text-foreground tabular-nums">{card.value}</p>
-                }
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{card.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatsGrid columns={3}>
+        <StatCard
+          label="Active Records"
+          value={loading ? null : entries.length}
+          icon={CheckCircle2}
+          bg="bg-emerald-500/10 text-emerald-500"
+        />
+        <StatCard
+          label="Total Queries / 24h"
+          value={loading ? null : entries.length > 0 ? (entries.length * 30).toLocaleString() : '0'}
+          icon={Network}
+          bg="bg-primary/10 text-primary"
+        />
+        <StatCard
+          label="Conflicts"
+          value={loading ? null : 0}
+          icon={AlertCircle}
+          bg="bg-rose-500/10 text-rose-500"
+        />
+      </StatsGrid>
 
       {/* Records table */}
       <Card className="overflow-hidden shadow-sm glass-panel rounded-lg" data-tour="dns-records-list">
@@ -146,17 +131,11 @@ export default function RecordManager() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {/* Search */}
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search records..."
-                  className="w-full bg-muted/30 pl-9 pr-4 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:bg-background transition-all duration-200"
-                />
-              </div>
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search records..."
+              />
               <Button
                 variant="outline"
                 size="sm"

@@ -9,13 +9,12 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/clipboard'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -27,6 +26,9 @@ import {
 } from '@/components/ui/table'
 import { useBlocklist } from '../hooks/useBlocklist'
 import BlocklistModal from './BlocklistModal'
+import { PageHeader } from '@/components/ui/page-header'
+import { StatCard, StatsGrid } from '@/components/ui/stat-card'
+import { SearchInput } from '@/components/ui/search-input'
 
 const PAGE_SIZE = 15
 
@@ -51,6 +53,15 @@ export default function BlocklistManager() {
 
   const isWildcard = (d?: string) => d ? d.startsWith('*') : false
 
+  const pageActions = (
+    <Button
+      className="w-full sm:w-auto shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-destructive bg-destructive text-destructive-foreground hover:bg-destructive/95 rounded-sm"
+      onClick={() => setShowForm(true)}
+    >
+      <ShieldAlert className="h-4 w-4" /> Block Domain
+    </Button>
+  )
+
   return (
     <div className="w-full space-y-6 md:space-y-8">
       <ConfirmDialog
@@ -73,59 +84,33 @@ export default function BlocklistManager() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Blocklist Management</h2>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
-            Enforce domain blocking rules to protect local clients from telemetry and tracking.
-          </p>
-        </div>
-        <Button
-          className="w-full sm:w-auto shrink-0 gap-2 text-[10px] font-bold uppercase tracking-widest shadow-sm btn-premium glow-destructive bg-destructive text-destructive-foreground hover:bg-destructive/95"
-          onClick={() => setShowForm(true)}
-        >
-          <ShieldAlert className="h-4 w-4" /> Block Domain
-        </Button>
-      </div>
+      <PageHeader
+        title="Blocklist Management"
+        description="Enforce domain blocking rules to protect local clients from telemetry and tracking."
+        actions={pageActions}
+      />
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          {
-            label: 'Blocked Domains',
-            value: loading ? null : list.length,
-            icon: <ShieldAlert className="h-5 w-5 text-rose-500" />,
-            bg: 'bg-rose-500/10',
-          },
-          {
-            label: 'Queries Blocked / 24h',
-            value: loading ? null : (list.length * 12).toLocaleString(),
-            icon: <Activity className="h-5 w-5 text-primary" />,
-            bg: 'bg-primary/10',
-          },
-          {
-            label: 'Wildcards',
-            value: loading ? null : list.filter(item => isWildcard(item.domain)).length,
-            icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
-            bg: 'bg-amber-500/10',
-          },
-        ].map(card => (
-          <Card key={card.label} className="shadow-sm glass-panel hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 rounded-lg">
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className={`h-10 w-10 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
-                {card.icon}
-              </div>
-              <div>
-                {card.value == null
-                  ? <Skeleton className="h-7 w-16 mb-1" />
-                  : <p className="text-2xl font-bold text-foreground tabular-nums">{card.value}</p>
-                }
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{card.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatsGrid columns={3}>
+        <StatCard
+          label="Blocked Domains"
+          value={loading ? null : list.length}
+          icon={ShieldAlert}
+          bg="bg-rose-500/10 text-rose-500"
+        />
+        <StatCard
+          label="Queries Blocked / 24h"
+          value={loading ? null : (list.length * 12).toLocaleString()}
+          icon={Activity}
+          bg="bg-primary/10 text-primary"
+        />
+        <StatCard
+          label="Wildcards"
+          value={loading ? null : list.filter(item => isWildcard(item.domain)).length}
+          icon={AlertTriangle}
+          bg="bg-amber-500/10 text-amber-500"
+        />
+      </StatsGrid>
 
       {/* Domain blocklist table */}
       <Card className="overflow-hidden shadow-sm glass-panel rounded-lg" data-tour="blocklist-list">
@@ -138,17 +123,11 @@ export default function BlocklistManager() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {/* Search */}
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setPage(1) }}
-                  placeholder="Search blocklist..."
-                  className="w-full bg-muted/30 pl-9 pr-4 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:bg-background transition-all duration-200"
-                />
-              </div>
+              <SearchInput
+                value={search}
+                onChange={val => { setSearch(val); setPage(1) }}
+                placeholder="Search blocklist..."
+              />
               <Button
                 variant="outline"
                 size="sm"

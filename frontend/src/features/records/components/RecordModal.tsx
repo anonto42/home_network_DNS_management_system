@@ -1,6 +1,7 @@
 import { PlusCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
 
 interface RecordModalProps {
   recordType: string
@@ -36,68 +37,64 @@ export default function RecordModal({
 }: RecordModalProps) {
   const ph = PLACEHOLDERS[recordType] || PLACEHOLDERS['A (IPv4 Address)']
 
+  const footer = (
+    <>
+      <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={resetForm}>
+        Cancel
+      </Button>
+      <Button
+        className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2 btn-premium glow-primary"
+        onClick={handleAdd}
+        disabled={adding}
+      >
+        <PlusCircle className="h-3.5 w-3.5" />
+        {adding ? 'Adding…' : 'Add Record'}
+      </Button>
+    </>
+  )
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetForm} />
-      <div className="relative z-10 w-full sm:max-w-lg bg-card border border-border shadow-2xl sm:rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-5 bg-muted/20 border-b border-border">
-          <div>
-            <p className="text-sm font-bold text-foreground">Add DNS Record</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
-              Create an authoritative record for your local network.
-            </p>
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/40" onClick={resetForm}>
-            ✕
-          </Button>
+    <Modal
+      isOpen={true}
+      onClose={resetForm}
+      title="Add DNS Record"
+      description="Create an authoritative record for your local network."
+      footer={footer}
+      maxWidth="lg"
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-foreground">Record Type</label>
+          <select value={recordType} onChange={e => setRecordType(e.target.value)} className={sel}>
+            {RECORD_TYPES.map(t => <option key={t}>{t}</option>)}
+          </select>
         </div>
-        <div className="px-6 py-5 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-foreground">Record Type</label>
-            <select value={recordType} onChange={e => setRecordType(e.target.value)} className={sel}>
-              {RECORD_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-foreground">Domain Name</label>
-            <Input
-              value={domain}
-              onChange={e => setDomain(e.target.value)}
-              placeholder={ph.domain}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              spellCheck={false}
-              autoComplete="off"
-              className="input-premium"
-              autoFocus
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-foreground">Value</label>
-            <Input
-              value={ip}
-              onChange={e => setIp(e.target.value)}
-              placeholder={ph.value}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              spellCheck={false}
-              autoComplete="off"
-              className="input-premium"
-            />
-          </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-foreground">Domain Name</label>
+          <Input
+            value={domain}
+            onChange={e => setDomain(e.target.value)}
+            placeholder={ph.domain}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            spellCheck={false}
+            autoComplete="off"
+            className="input-premium"
+            autoFocus
+          />
         </div>
-        <div className="flex justify-end gap-3 px-6 py-4 bg-muted/10 border-t border-border">
-          <Button variant="outline" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={resetForm}>
-            Cancel
-          </Button>
-          <Button
-            className="text-[10px] font-bold uppercase tracking-widest shadow-sm gap-2 btn-premium glow-primary"
-            onClick={handleAdd}
-            disabled={adding}
-          >
-            <PlusCircle className="h-3.5 w-3.5" />
-            {adding ? 'Adding…' : 'Add Record'}
-          </Button>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-foreground">Value</label>
+          <Input
+            value={ip}
+            onChange={e => setIp(e.target.value)}
+            placeholder={ph.value}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            spellCheck={false}
+            autoComplete="off"
+            className="input-premium"
+          />
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

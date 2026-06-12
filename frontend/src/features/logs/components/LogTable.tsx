@@ -12,6 +12,8 @@ import {
 import { useLogTable } from '../hooks/useLogTable'
 import LogDetailRow from './LogDetailRow'
 
+import { SearchInput } from '@/components/ui/search-input'
+
 const PAGE_SIZE = 25
 
 const statusConfig: Record<string, { className: string; label: string; accent: string; panelBg: string }> = {
@@ -75,16 +77,12 @@ export default function LogTable({ compact }: Props) {
         {!compact && (
           <CardHeader className="pb-3 bg-muted/5">
             <div className="flex flex-col gap-3">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
-                <input
-                  type="text"
-                  value={domainSearch}
-                  onChange={e => handleDomainSearch(e.target.value)}
-                  placeholder="Filter by domain..."
-                  className="w-full bg-muted/30 pl-9 pr-4 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 border border-border rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:bg-background transition-all duration-200"
-                />
-              </div>
+              <SearchInput
+                value={domainSearch}
+                onChange={handleDomainSearch}
+                placeholder="Filter by domain..."
+                className="w-full"
+              />
               <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-wrap bg-muted/50 p-1 gap-0.5">
                   {(['all', 'allowed', 'blocked', 'cached'] as const).map((f) => (

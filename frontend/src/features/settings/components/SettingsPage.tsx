@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useTheme } from '@/hooks/useTheme'
 import { dispatchNotificationsUpdate } from '@/lib/notifications'
-import { PageTransition } from '@/components/shared/PageTransition'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -57,12 +57,11 @@ export default function SettingsPage() {
   const isCustom = upstream === 'custom'
 
   return (
-    <PageTransition>
-      <div className="space-y-6 md:space-y-8">
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Settings</h1>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Configure your DNS server and security preferences.</p>
-        </div>
+    <div className="space-y-6 md:space-y-8">
+      <PageHeader
+        title="Settings"
+        description="Configure your DNS server and security preferences."
+      />
 
         {!loaded ? (
           <div className="grid gap-6">
@@ -157,7 +156,6 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
-
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
               <Button variant="outline" className="w-full sm:w-auto text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => { setUpstream('1.1.1.1:853'); setBlockNXDomain(false) }}>Discard Changes</Button>
               <Button className="w-full sm:w-auto shadow-sm text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Configuration'}</Button>
@@ -165,6 +163,5 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </PageTransition>
   )
 }

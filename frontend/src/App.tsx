@@ -6,14 +6,14 @@ import { DashboardLayout } from './components/layout/DashboardLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 
-// Feature page components — one per route
-import { DashboardPage } from './features/dashboard'
-import { LogsPage } from './features/logs'
-import { RecordManager } from './features/records'
-import { BlocklistManager } from './features/blocklist'
-import { SteeringPage } from './features/steering'
-import { SettingsPage } from './features/settings'
-import { ProfilePage } from './features/profile'
+// Page wrapper components — imported from src/pages
+import DashboardPage from './pages/DashboardPage'
+import LogsPage from './pages/LogsPage'
+import RecordsPage from './pages/RecordsPage'
+import BlocklistPage from './pages/BlocklistPage'
+import SteeringPage from './pages/SteeringPage'
+import SettingsPage from './pages/SettingsPage'
+import ProfilePage from './pages/ProfilePage'
 
 // ── Route Definitions ────────────────────────────────────────────────────
 
@@ -24,8 +24,8 @@ function AnimatedRoutes() {
     <Routes location={location}>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/logs" element={<LogsPage />} />
-      <Route path="/records" element={<RecordManager />} />
-      <Route path="/blocklist" element={<BlocklistManager />} />
+      <Route path="/records" element={<RecordsPage />} />
+      <Route path="/blocklist" element={<BlocklistPage />} />
       <Route path="/steering" element={<SteeringPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/profile" element={<ProfilePage />} />

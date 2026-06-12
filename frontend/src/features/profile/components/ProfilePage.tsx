@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { apiPut } from '@/hooks/api'
 import { dispatchNotificationsUpdate } from '@/lib/notifications'
-import { PageTransition } from '@/components/shared/PageTransition'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
@@ -72,13 +72,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <PageTransition>
-      <div className="space-y-6 md:space-y-8">
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Profile</h1>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Manage your account details and preferences.</p>
-        </div>
-        <div className="grid gap-6">
+    <div className="space-y-6 md:space-y-8">
+      <PageHeader
+        title="Profile"
+        description="Manage your account details and preferences."
+      />
+      <div className="grid gap-6">
           <Card className="shadow-sm" data-tour="profile-card">
             <CardHeader>
               <CardTitle className="font-bold tracking-tight text-foreground">Account Details</CardTitle>
@@ -134,6 +133,5 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </PageTransition>
   )
 }
