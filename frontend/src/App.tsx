@@ -11,7 +11,7 @@ import LoginPage from './pages/LoginPage'
 import { TourProvider } from './contexts/TourContext'
 import { apiGet, apiPost, apiPut, apiDelete } from './hooks/api'
 import {
-  Calendar,
+
   Download,
   BarChart3,
   CheckCircle2,
@@ -23,8 +23,7 @@ import {
   Sun,
   Moon,
   Monitor,
-  ChevronDown,
-  Check,
+
   Search,
 } from 'lucide-react'
 
@@ -321,58 +320,15 @@ function NetworkLoadChart() {
   )
 }
 
-const PRESETS: TimeRange[] = [
-  { mode: 'live' },
-  { mode: 'preset', hours: 1,    label: 'Last 1 Hour'  },
-  { mode: 'preset', hours: 24,   label: 'Last 24 Hours' },
-  { mode: 'preset', hours: 168,  label: 'Last 7 Days'  },
-]
+
 
 const Dashboard = () => {
-  const [range, setRange] = useState<TimeRange>({ mode: 'live' })
-  const [showPicker, setShowPicker] = useState(false)
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo,   setCustomTo]   = useState('')
   const [exporting, setExporting] = useState(false)
-  const [showTimeDropdown, setShowTimeDropdown] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowTimeDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  const getActiveLabel = () => {
-    if (range.mode === 'live') return 'Live stream'
-    if (range.mode === 'preset') {
-      const matched = PRESETS.find(p => p.mode === 'preset' && p.hours === range.hours)
-      return matched ? (matched as any).label : `Last ${range.hours} Hours`
-    }
-    if (range.mode === 'custom') {
-      return 'Custom Range'
-    }
-    return 'Select Timeframe'
-  }
-
-  const applyCustom = () => {
-    if (!customFrom || !customTo) return
-    setRange({ mode: 'custom', from: customFrom, to: customTo })
-    setShowPicker(false)
-    setShowTimeDropdown(false) // Close the dropdown on apply
-  }
 
   const handleExport = async () => {
     setExporting(true)
-    try { await exportLogsCSV(range) } finally { setExporting(false) }
+    try { await exportLogsCSV({ mode: 'live' }) } finally { setExporting(false) }
   }
-
-  const isLive = range.mode === 'live'
 
   return (
     <PageTransition>
@@ -384,112 +340,6 @@ const Dashboard = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Time range selector dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowTimeDropdown(v => !v)}
-                className="flex items-center gap-2 px-4 h-9 text-[10px] font-bold uppercase tracking-wider rounded-sm border border-border bg-card hover:bg-muted text-foreground transition-all duration-200 shadow-sm select-none cursor-pointer"
-              >
-                {range.mode === 'live' ? (
-                  <span className="relative flex h-2 w-2 mr-1">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                ) : (
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-                )}
-                <span>{getActiveLabel()}</span>
-                <ChevronDown className={`ml-1 h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${showTimeDropdown ? "rotate-180" : ""}`} />
-              </button>
-
-              {showTimeDropdown && (
-                <div className="absolute right-0 top-full mt-2 z-50 glass-panel border border-border rounded-sm shadow-xl p-2 w-[280px] space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-3 py-1.5 border-b border-border mb-1">Select Timeframe</p>
-                  
-                  {/* Presets */}
-                  {PRESETS.map(p => {
-                    const label = p.mode === 'live' ? 'Live stream' : (p as any).label
-                    const active = range.mode === p.mode && (p.mode !== 'preset' || (range.mode === 'preset' && range.hours === (p as any).hours))
-                    return (
-                      <button
-                        key={p.mode === 'live' ? 'live' : (p as any).hours}
-                        onClick={() => {
-                          setRange(p)
-                          setShowTimeDropdown(false)
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer ${
-                          active 
-                            ? "bg-primary/10 text-primary" 
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          {p.mode === 'live' && (
-                            <span className="relative flex h-2 w-2 shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                          )}
-                          {label}
-                        </span>
-                        {active && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                      </button>
-                    )
-                  })}
-
-                  {/* Custom Option */}
-                  <button
-                    onClick={() => {
-                      setRange({ mode: 'custom', from: customFrom || new Date(Date.now() - 3600000).toISOString().slice(0,16), to: customTo || new Date().toISOString().slice(0,16) })
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer ${
-                      range.mode === 'custom' 
-                        ? "bg-primary/10 text-primary" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      Custom Range
-                    </span>
-                    {range.mode === 'custom' && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                  </button>
-
-                  {/* Accordion panel for custom date selection */}
-                  {range.mode === 'custom' && (
-                    <div className="px-3 py-3 border-t border-border mt-2 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">From</label>
-                        <input
-                          type="datetime-local"
-                          value={customFrom}
-                          onChange={e => setCustomFrom(e.target.value)}
-                          className="w-full input-premium bg-muted/20 border border-border text-foreground text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">To</label>
-                        <input
-                          type="datetime-local"
-                          value={customTo}
-                          onChange={e => setCustomTo(e.target.value)}
-                          className="w-full input-premium bg-muted/20 border border-border text-foreground text-xs"
-                        />
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <Button size="sm" className="flex-1 text-[10px] font-bold uppercase tracking-widest btn-premium glow-primary" onClick={applyCustom} disabled={!customFrom || !customTo}>
-                          Apply
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-[10px] font-bold uppercase tracking-widest btn-premium" onClick={() => setShowTimeDropdown(false)}>
-                          Close
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
             {/* Export */}
             <Button
               size="sm"
