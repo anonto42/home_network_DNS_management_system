@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { TourProvider } from './contexts/TourContext'
@@ -13,6 +14,36 @@ import BlocklistPage from './pages/BlocklistPage'
 import SteeringPage from './pages/SteeringPage'
 import SettingsPage from './pages/SettingsPage'
 import ProfilePage from './pages/ProfilePage'
+
+// ── Dynamic Metadata Updater ──────────────────────────────────────────────
+function MetadataUpdater() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const titleMap: Record<string, string> = {
+      '/': 'Overview | OmniDNS',
+      '/logs': 'Query Logs | OmniDNS',
+      '/records': 'DNS Records | OmniDNS',
+      '/blocklist': 'Blocklist | OmniDNS',
+      '/steering': 'Traffic Steering | OmniDNS',
+      '/settings': 'Settings | OmniDNS',
+      '/profile': 'Profile | OmniDNS',
+      '/login': 'Sign In | OmniDNS',
+    }
+    const currentTitle = titleMap[location.pathname] || 'OmniDNS'
+    document.title = currentTitle
+
+    let metaDesc = document.querySelector('meta[name="description"]')
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta')
+      metaDesc.setAttribute('name', 'description')
+      document.head.appendChild(metaDesc)
+    }
+    metaDesc.setAttribute('content', `OmniDNS - ${currentTitle}`)
+  }, [location.pathname])
+
+  return null
+}
 
 // ── Route Definitions ────────────────────────────────────────────────────
 
@@ -38,6 +69,7 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <>
+      <MetadataUpdater />
       <Toaster
         position="bottom-right"
         toastOptions={{
