@@ -8,8 +8,8 @@ export interface TourStep {
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    title: 'Welcome to NetShield',
-    content: 'NetShield is a high-performance DNS management server for your home network. This interactive guide will walk you through the core modules, detailing how our Go-based resolver and SQLite database function under the hood to secure and optimize your local queries.',
+    title: 'Welcome to OmniDNS',
+    content: 'OmniDNS is a high-performance DNS management server for your home network. This interactive guide will walk you through the core modules, detailing how our Go-based resolver and SQLite database function under the hood to secure and optimize your local queries.',
     placement: 'center',
     route: '/',
   },
@@ -36,7 +36,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     title: 'Local DNS Records',
-    content: 'This table houses local DNS records (like A, AAAA, CNAME) which map custom domains (e.g. "nas.home") directly to local IPs. The NetShield resolver evaluates these rules first, serving local queries authoritatively and overriding upstream responses.',
+    content: 'This table houses local DNS records (like A, AAAA, CNAME) which map custom domains (e.g. "nas.home") directly to local IPs. The OmniDNS resolver evaluates these rules first, serving local queries authoritatively and overriding upstream responses.',
     target: '[data-tour="dns-records-list"]',
     placement: 'top',
     route: '/records',
@@ -84,8 +84,8 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/',
   },
   {
-    title: 'NetShield Tour Completed!',
-    content: 'You are now ready to operate NetShield like a pro! If you need to re-run this guide or review technical descriptions in the future, you can restart the tour at any time from the sidebar menu.',
+    title: 'OmniDNS Tour Completed!',
+    content: 'You are now ready to operate OmniDNS like a pro! If you need to re-run this guide or review technical descriptions in the future, you can restart the tour at any time from the sidebar menu.',
     placement: 'center',
     route: '/',
   },

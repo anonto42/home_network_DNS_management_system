@@ -1,11 +1,11 @@
-# NetShield UI/UX & Styling Guidelines for AI Assistants
+# OmniDNS UI/UX & Styling Guidelines for AI Assistants
 
-This document serves as the styling standard for the NetShield DNS Management interface. It outlines the design principles, visual tokens, and specific instructions for AI assistants to audit, identify, and resolve Tailwind CSS and shadcn-related styling issues.
+This document serves as the styling standard for the OmniDNS DNS Management interface. It outlines the design principles, visual tokens, and specific instructions for AI assistants to audit, identify, and resolve Tailwind CSS and shadcn-related styling issues.
 
 ---
 
 ## 1. Core Visual Archetype
-NetShield is a premium, developer-centric network utility. The interface must look extremely clean, high-performance, and high-fidelity. It uses a **Sleek Tech Dark/Light** system relying on CSS variables and OKLCH color spaces.
+OmniDNS is a premium, developer-centric network utility. The interface must look extremely clean, high-performance, and high-fidelity. It uses a **Sleek Tech Dark/Light** system relying on CSS variables and OKLCH color spaces.
 
 ### Design Tokens (Defined in `src/index.css` & `tailwind.config.js`)
 - **Base Background**: `bg-background` (OKLCH near-white or near-black)
@@ -45,7 +45,7 @@ When scanning the codebase, look for the following Tailwind CSS and shadcn anti-
 ---
 
 ## 3. Sidebar Styling Standard for Items (The "Iters")
-The sidebar is the primary navigation spine of NetShield. It must feel fluid, premium, and highly responsive.
+The sidebar is the primary navigation spine of OmniDNS. It must feel fluid, premium, and highly responsive.
 
 ### A. Anatomical Structure of a Sidebar Item
 A single navigation item consists of:
@@ -71,7 +71,7 @@ A single navigation item consists of:
 
 ---
 
-## 4. How to Audit and Fix Styling Issues in NetShield
+## 4. How to Audit and Fix Styling Issues in OmniDNS
 1.  **Identify Arbitrary Color Classes**: Use grep to find `bg-[#`, `text-[#`, `border-[#`.
 2.  **Verify Dark Mode Contrast**: Ensure no hardcoded light text on light backgrounds or dark text on dark backgrounds exists without responsive wrappers.
 3.  **Audit Sidebar Item Classes**: Replace default standard buttons/nav links with the premium sidebar item design defined above.

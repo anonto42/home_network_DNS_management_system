@@ -1,6 +1,5 @@
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { useAuth } from './hooks/useAuth'
 import { TourProvider } from './contexts/TourContext'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'

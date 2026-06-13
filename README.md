@@ -1,4 +1,4 @@
-# NetShield DNS — Complete Documentation
+# OmniDNS DNS — Complete Documentation
 
 A self-hosted DNS server for your home network with a full web dashboard. It filters ads and trackers, lets you create local DNS records, logs every query from every device on your network, and gives you traffic steering rules — all manageable from a browser.
 
@@ -27,16 +27,16 @@ A self-hosted DNS server for your home network with a full web dashboard. It fil
 
 ## 1. How It Works
 
-When any device on your network (phone, laptop, TV, smart bulb) needs to look up a domain name, it asks a DNS server. Normally that server is your ISP or Google. NetShield DNS puts your own computer in that role.
+When any device on your network (phone, laptop, TV, smart bulb) needs to look up a domain name, it asks a DNS server. Normally that server is your ISP or Google. OmniDNS DNS puts your own computer in that role.
 
 ```
 Device asks: "What is the IP for google.com?"
          │
          ▼
    Your Router (192.168.1.1)
-         │  forwards DNS queries to NetShield
+         │  forwards DNS queries to OmniDNS
          ▼
-   NetShield DNS (192.168.1.X:53)
+   OmniDNS DNS (192.168.1.X:53)
          │
          ├─ Is the domain on the blocklist?
          │     YES → return 0.0.0.0 (blocked)
@@ -181,11 +181,11 @@ cd ..
 
 # 2. Build the Go binary with the frontend embedded
 cd backend
-go build -tags embed -o ../netshield-dns ./cmd/dns-server
+go build -tags embed -o ../omnidns-dns ./cmd/dns-server
 cd ..
 
 # 3. Run (port 53 requires root or cap_net_bind_service)
-sudo ./netshield-dns
+sudo ./omnidns-dns
 ```
 
 #### Run in development mode (no Docker)
@@ -242,7 +242,7 @@ Open **http://localhost:8080** (production) or **http://localhost:5173** (dev) a
 
 ## 3. Connecting to Your Home Router
 
-This is the step that makes NetShield work for every device on your network automatically.
+This is the step that makes OmniDNS work for every device on your network automatically.
 
 ### Step 1 — Find your server's local IP
 
@@ -279,7 +279,7 @@ sudo ufw allow 53/tcp
 sudo ufw allow 8080/tcp  # dashboard
 ```
 
-### Step 4 — Tell your router to use NetShield
+### Step 4 — Tell your router to use OmniDNS
 
 Log into your router admin (usually `http://192.168.1.1` or `http://192.168.0.1`).
 
@@ -290,22 +290,22 @@ Primary DNS:    192.168.1.50    ← your server's static IP
 Secondary DNS:  1.1.1.1         ← fallback if your server is down
 ```
 
-Save and restart the router. Every device that reconnects will now use NetShield DNS automatically — no configuration needed on each device.
+Save and restart the router. Every device that reconnects will now use OmniDNS DNS automatically — no configuration needed on each device.
 
 ### Step 5 — Auto-start on boot
 
 ```bash
-sudo tee /etc/systemd/system/netshield-dns.service > /dev/null << 'EOF'
+sudo tee /etc/systemd/system/omnidns-dns.service > /dev/null << 'EOF'
 [Unit]
-Description=NetShield DNS Server
+Description=OmniDNS DNS Server
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/netshield
-ExecStart=/opt/netshield/netshield-dns
+WorkingDirectory=/opt/omnidns
+ExecStart=/opt/omnidns/omnidns-dns
 Restart=on-failure
 RestartSec=5
 
@@ -314,9 +314,9 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable netshield-dns
-sudo systemctl start netshield-dns
-sudo systemctl status netshield-dns
+sudo systemctl enable omnidns-dns
+sudo systemctl start omnidns-dns
+sudo systemctl status omnidns-dns
 ```
 
 ### Step 6 — Verify it is working
@@ -831,7 +831,7 @@ curl -X PUT http://localhost:8080/api/password \
 ## 7. CLI Flags
 
 ```bash
-sudo ./netshield-dns [flags]
+sudo ./omnidns-dns [flags]
 ```
 
 | Flag | Default | Description |
@@ -851,17 +851,17 @@ sudo ./netshield-dns [flags]
 
 ```bash
 # Production — JSON logs, large cache, auto-prune after 30 days
-sudo ./netshield-dns \
+sudo ./omnidns-dns \
   --upstream 9.9.9.9:53 \
   --cache-size 5000 \
   --log-format json \
   --log-prune 720h
 
 # Debug — see every DNS query in logs
-sudo ./netshield-dns --log-level debug
+sudo ./omnidns-dns --log-level debug
 
 # Run without root using high ports
-./netshield-dns --dns-port 5353 --http-port 3000
+./omnidns-dns --dns-port 5353 --http-port 3000
 ```
 
 ---
@@ -962,14 +962,14 @@ Both listeners use a 500ms deadline in their accept loops so they can check the 
 Port 53 requires root on Linux. Either run with `sudo`, or grant the binary the `cap_net_bind_service` capability:
 
 ```bash
-sudo setcap 'cap_net_bind_service=+ep' ./netshield-dns
-./netshield-dns  # no sudo needed
+sudo setcap 'cap_net_bind_service=+ep' ./omnidns-dns
+./omnidns-dns  # no sudo needed
 ```
 
 Or use iptables to redirect port 53 to a high port:
 
 ```bash
-./netshield-dns --dns-port 5353
+./omnidns-dns --dns-port 5353
 
 sudo iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port 5353
 sudo iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-port 5353
@@ -994,7 +994,7 @@ ipconfig /release && ipconfig /renew && ipconfig /flushdns
 
 ```bash
 # Check the server is running
-sudo systemctl status netshield-dns
+sudo systemctl status omnidns-dns
 
 # Check the HTTP port responds
 curl http://localhost:8080/health
@@ -1008,7 +1008,7 @@ sudo ufw status
 Logs are written asynchronously with up to a 5-second delay. Wait a few seconds and refresh. If they still do not appear:
 
 ```bash
-sudo journalctl -u netshield-dns -f
+sudo journalctl -u omnidns-dns -f
 ```
 
 ### A blocked domain is still resolving

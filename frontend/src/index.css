@@ -26,91 +26,113 @@ body {
     --font-sans: 'Inter Variable', sans-serif;
   }
 
-  /* ─── Modern rounded corners ───────────────────────── */
+  /* ─── Modern sharp corners ─────────────────────────── */
   :root {
-    --radius: 0.5rem;
+    --radius: 0px;
   }
 
-  /* ─── Light theme: Clean slate-blue with Indigo accent ── */
+  .rounded,
+  .rounded-sm,
+  .rounded-md,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl {
+    border-radius: 0px !important;
+  }
+
+  /* ─── Light theme: Clean slate-blue with Symphony accent ── */
   :root {
-    --background:           oklch(0.97 0.01 250);   /* soft slate-blue white */
-    --foreground:           oklch(0.15 0.01 250);   /* rich charcoal text */
+    --background:           oklch(0.98 0.005 240);   /* soft light slate-white */
+    --foreground:           oklch(0.18 0.01 240);   /* rich charcoal text */
 
     --card:                 oklch(1.00 0    0);     /* pure white cards */
-    --card-foreground:      oklch(0.15 0.01 250);
+    --card-foreground:      oklch(0.18 0.01 240);
     --card-glass:           oklch(1.00 0    0 / 0.8);
     --card-glass-modal:     oklch(1.00 0    0 / 0.95);
 
     --popover:              oklch(1.00 0    0);
-    --popover-foreground:   oklch(0.15 0.01 250);
+    --popover-foreground:   oklch(0.18 0.01 240);
 
-    --primary:              oklch(0.52 0.15 200);   /* vibrant tech cyan-blue */
-    --primary-foreground:   oklch(0.98 0.01 250);
+    --primary:              oklch(0.60 0.16 195);   /* vibrant Symphony cyan */
+    --primary-foreground:   oklch(0.98 0.005 240);
 
-    --secondary:            oklch(0.94 0.01 250);
-    --secondary-foreground: oklch(0.20 0.02 250);
+    --secondary:            oklch(0.94 0.01 240);
+    --secondary-foreground: oklch(0.20 0.02 240);
 
-    --muted:                oklch(0.93 0.01 250);   /* soft gray-blue */
-    --muted-foreground:     oklch(0.45 0.01 250);
-    --muted-glass:          oklch(0.93 0.01 250 / 0.3);
-    --scrollbar-thumb:       oklch(0.45 0.01 250 / 0.2);
-    --scrollbar-thumb-hover: oklch(0.45 0.01 250 / 0.35);
+    --muted:                oklch(0.94 0.01 240);   /* soft gray-blue */
+    --muted-foreground:     oklch(0.48 0.01 240);
+    --muted-glass:          oklch(0.94 0.01 240 / 0.3);
+    --scrollbar-thumb:       oklch(0.48 0.01 240 / 0.2);
+    --scrollbar-thumb-hover: oklch(0.48 0.01 240 / 0.35);
 
-    --accent:               oklch(0.94 0.01 250);
-    --accent-foreground:    oklch(0.20 0.02 250);
+    --accent:               oklch(0.94 0.01 240);
+    --accent-foreground:    oklch(0.20 0.02 240);
+
+    /* Symphony Custom Accents */
+    --accent-purple:        oklch(0.50 0.18 290);   /* Deep Purple */
+    --accent-purple-foreground: oklch(0.98 0.005 290);
+    --accent-gold:          oklch(0.76 0.15 75);    /* Warm Gold */
+    --accent-gold-foreground:   oklch(0.15 0.02 75);
 
     --destructive:          oklch(0.58 0.20 20);    /* deep modern red */
     --destructive-foreground: oklch(0.98 0    0);
 
-    --border:               oklch(0.90 0.01 250);   /* clean card borders */
-    --border-glass:         oklch(0.90 0.01 250 / 0.4);
-    --border-glass-modal:   oklch(0.90 0.01 250 / 0.6);
-    --input:                oklch(0.93 0.01 250);
-    --ring:                 oklch(0.52 0.15 200 / 0.25);
+    --border:               oklch(0.90 0.01 240);   /* clean card borders */
+    --border-glass:         oklch(0.90 0.01 240 / 0.4);
+    --border-glass-modal:   oklch(0.90 0.01 240 / 0.6);
+    --input:                oklch(0.94 0.01 240);
+    --ring:                 oklch(0.60 0.16 195 / 0.25);
 
     --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
     --shadow:     0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   }
 
-  /* ─── Dark theme: Deep space-navy with vibrant Indigo ── */
+  /* ─── Dark theme: Deep space-navy with Symphony accents ── */
   .dark {
-    --background:           oklch(0.12 0.015 250);  /* deep space-navy */
-    --foreground:           oklch(0.95 0.01 250);   /* bright text */
+    --background:           #000204;  /* exact deep black-navy */
+    --foreground:           oklch(0.95 0.01 240);   /* bright text */
 
-    --card:                 oklch(0.16 0.02 250);   /* rich card color */
-    --card-foreground:      oklch(0.95 0.01 250);
-    --card-glass:           oklch(0.16 0.02 250 / 0.8);
-    --card-glass-modal:     oklch(0.16 0.02 250 / 0.95);
+    --card:                 #071221;  /* exact card background */
+    --card-foreground:      oklch(0.95 0.01 240);
+    --card-glass:           rgba(7, 18, 33, 0.85);
+    --card-glass-modal:     rgba(7, 18, 33, 0.95);
 
-    --popover:              oklch(0.18 0.02 250);
-    --popover-foreground:   oklch(0.95 0.01 250);
+    --popover:              #071221;
+    --popover-foreground:   oklch(0.95 0.01 240);
 
-    --primary:              oklch(0.68 0.16 200);   /* glowing tech cyan-blue */
-    --primary-foreground:   oklch(0.12 0.015 250);
+    --primary:              oklch(0.72 0.16 195);   /* glowing Symphony cyan */
+    --primary-foreground:   #000204;
 
-    --secondary:            oklch(0.20 0.02 250);
-    --secondary-foreground: oklch(0.90 0.01 250);
+    --secondary:            #14191f;  /* exact secondary background */
+    --secondary-foreground: oklch(0.92 0.01 240);
 
-    --muted:                oklch(0.20 0.02 250);
-    --muted-foreground:     oklch(0.60 0.01 250);
-    --muted-glass:          oklch(0.20 0.02 250 / 0.3);
-    --scrollbar-thumb:       oklch(0.60 0.01 250 / 0.2);
-    --scrollbar-thumb-hover: oklch(0.60 0.01 250 / 0.35);
+    --muted:                #14191f;
+    --muted-foreground:     oklch(0.68 0.015 245);  /* slate-400 equivalent for highly readable labels */
+    --muted-glass:          rgba(20, 25, 31, 0.3);
+    --scrollbar-thumb:       oklch(0.58 0.01 240 / 0.2);
+    --scrollbar-thumb-hover: oklch(0.58 0.01 240 / 0.35);
 
-    --accent:               oklch(0.22 0.02 250);
-    --accent-foreground:    oklch(0.90 0.01 250);
+    --accent:               #14191f;
+    --accent-foreground:    oklch(0.90 0.01 240);
+
+    /* Symphony Custom Accents */
+    --accent-purple:        oklch(0.62 0.18 290);   /* glowing Deep Purple */
+    --accent-purple-foreground: oklch(0.08 0.02 290);
+    --accent-gold:          oklch(0.79 0.15 75);    /* glowing Warm Gold */
+    --accent-gold-foreground:   oklch(0.08 0.02 75);
 
     --destructive:          oklch(0.60 0.21 20);
     --destructive-foreground: oklch(0.98 0    0);
 
-    --border:               oklch(0.22 0.02 250 / 0.7);
-    --border-glass:         oklch(0.22 0.02 250 / 0.4);
-    --border-glass-modal:   oklch(0.22 0.02 250 / 0.6);
-    --input:                oklch(0.20 0.02 250);
-    --ring:                 oklch(0.68 0.16 200 / 0.35);
+    --border:               rgba(20, 25, 31, 0.55); /* border color derived from secondary */
+    --border-glass:         rgba(20, 25, 31, 0.35);
+    --border-glass-modal:   rgba(20, 25, 31, 0.55);
+    --input:                #000204;  /* darker inputs */
+    --ring:                 oklch(0.72 0.16 195 / 0.35);
 
-    --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
-    --shadow:     0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --shadow:     0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
   }
 
   body {
@@ -136,7 +158,15 @@ body {
 }
 
 .glow-primary {
-  box-shadow: 0 0 20px oklch(0.68 0.16 200 / 0.25);
+  box-shadow: 0 0 20px oklch(0.72 0.16 195 / 0.25);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px oklch(0.62 0.18 290 / 0.25);
+}
+
+.glow-gold {
+  box-shadow: 0 0 20px oklch(0.79 0.15 75 / 0.25);
 }
 
 .glow-success {

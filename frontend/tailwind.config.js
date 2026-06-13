@@ -30,6 +30,14 @@ export default {
           DEFAULT: "var(--accent)",
           foreground: "var(--accent-foreground)",
         },
+        'accent-purple': {
+          DEFAULT: "var(--accent-purple)",
+          foreground: "var(--accent-purple-foreground)",
+        },
+        'accent-gold': {
+          DEFAULT: "var(--accent-gold)",
+          foreground: "var(--accent-gold-foreground)",
+        },
         popover: {
           DEFAULT: "var(--popover)",
           foreground: "var(--popover-foreground)",

@@ -13,24 +13,24 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useLayout } from '../../hooks/useLayout';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/features/auth';
 import { useTour } from '../../contexts/TourContext';
 import { apiDelete } from '../../hooks/api';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { OmniDNSLogo } from '@/components/shared/OmniDNSLogo';
 
 const Logo = ({ collapsed }: { collapsed: boolean }) => (
   <div className={cn(
     "flex items-center transition-all duration-300",
     collapsed ? "justify-center" : "gap-3 overflow-hidden whitespace-nowrap"
   )}>
-    <div className="w-9 h-9 bg-primary flex-shrink-0 flex items-center justify-center shadow-sm">
-      <Shield size={20} className="text-primary-foreground" />
+    <div className="flex-shrink-0 flex items-center justify-center">
+      <OmniDNSLogo size={collapsed ? 28 : 32} />
     </div>
     {!collapsed && (
       <div className="flex flex-col">
-        <h1 className="text-base font-bold leading-tight tracking-tight text-foreground">NetShield</h1>
-        <p className="text-[10px] text-muted-foreground font-semibold tracking-widest uppercase opacity-70">Enterprise</p>
+        <h1 className="text-base font-bold leading-tight tracking-tight text-foreground">OmniDNS</h1>
       </div>
     )}
   </div>

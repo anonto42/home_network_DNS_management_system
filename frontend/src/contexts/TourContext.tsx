@@ -1,70 +1,99 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react'
+import { create } from 'zustand'
 import { TOUR_STEPS, type TourStep } from './tourSteps'
 import { getPopoverStyle, getSpotlightStyle } from './tourLayout'
 
-interface TourContextType {
+interface TourStore {
   isActive: boolean
   currentStepIndex: number
-  startTour: () => void
+  targetRect: DOMRect | null
+  startTour: (navigate: (path: string) => void) => void
   stopTour: () => void
-  nextStep: () => void
-  prevStep: () => void
-  currentStep: TourStep | null
+  nextStep: (navigate: (path: string) => void) => void
+  prevStep: (navigate: (path: string) => void) => void
+  setTargetRect: (rect: DOMRect | null) => void
 }
 
-const TourContext = createContext<TourContextType | undefined>(undefined)
-
-export function TourProvider({ children }: { children: React.ReactNode }) {
-  const [isActive, setIsActive] = useState(false)
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
-  const navigate = useNavigate()
-
-  const startTour = useCallback(() => {
-    setCurrentStepIndex(0)
-    setIsActive(true)
+export const useTourStore = create<TourStore>((set, get) => ({
+  isActive: false,
+  currentStepIndex: 0,
+  targetRect: null,
+  startTour: (navigate) => {
+    set({ currentStepIndex: 0, isActive: true })
     navigate('/')
-  }, [navigate])
-
-  const stopTour = useCallback(() => {
-    setIsActive(false)
-    setTargetRect(null)
-  }, [])
-
-  const nextStep = useCallback(() => {
+  },
+  stopTour: () => {
+    set({ isActive: false, targetRect: null })
+  },
+  nextStep: (navigate) => {
+    const { currentStepIndex, stopTour } = get()
     if (currentStepIndex < TOUR_STEPS.length - 1) {
       const nextIndex = currentStepIndex + 1
       const nextStepObj = TOUR_STEPS[nextIndex]
       if (nextStepObj.route && window.location.pathname !== nextStepObj.route) {
         navigate(nextStepObj.route)
         setTimeout(() => {
-          setCurrentStepIndex(nextIndex)
+          set({ currentStepIndex: nextIndex })
         }, 300)
       } else {
-        setCurrentStepIndex(nextIndex)
+        set({ currentStepIndex: nextIndex })
       }
     } else {
       stopTour()
     }
-  }, [currentStepIndex, navigate, stopTour])
-
-  const prevStep = useCallback(() => {
+  },
+  prevStep: (navigate) => {
+    const { currentStepIndex } = get()
     if (currentStepIndex > 0) {
       const prevIndex = currentStepIndex - 1
       const prevStepObj = TOUR_STEPS[prevIndex]
       if (prevStepObj.route && window.location.pathname !== prevStepObj.route) {
         navigate(prevStepObj.route)
         setTimeout(() => {
-          setCurrentStepIndex(prevIndex)
+          set({ currentStepIndex: prevIndex })
         }, 300)
       } else {
-        setCurrentStepIndex(prevIndex)
+        set({ currentStepIndex: prevIndex })
       }
     }
-  }, [currentStepIndex, navigate])
+  },
+  setTargetRect: (rect) => {
+    set({ targetRect: rect })
+  },
+}))
+
+export function useTour() {
+  const navigate = useNavigate()
+  const isActive = useTourStore(state => state.isActive)
+  const currentStepIndex = useTourStore(state => state.currentStepIndex)
+  const startTour = useTourStore(state => state.startTour)
+  const stopTour = useTourStore(state => state.stopTour)
+  const nextStep = useTourStore(state => state.nextStep)
+  const prevStep = useTourStore(state => state.prevStep)
+
+  return {
+    isActive,
+    currentStepIndex,
+    startTour: () => startTour(navigate),
+    stopTour,
+    nextStep: () => nextStep(navigate),
+    prevStep: () => prevStep(navigate),
+    currentStep: isActive ? TOUR_STEPS[currentStepIndex] : null,
+  }
+}
+
+export function TourProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate()
+  const isActive = useTourStore(state => state.isActive)
+  const currentStepIndex = useTourStore(state => state.currentStepIndex)
+  const targetRect = useTourStore(state => state.targetRect)
+  const setTargetRect = useTourStore(state => state.setTargetRect)
+  const stopTour = useTourStore(state => state.stopTour)
+
+  const { nextStep, prevStep } = useTour()
 
   // Track target bounding rect
   useEffect(() => {
@@ -104,12 +133,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('resize', checkElement)
       window.removeEventListener('scroll', checkElement)
     }
-  }, [isActive, currentStepIndex])
+  }, [isActive, currentStepIndex, setTargetRect])
 
   const currentStep = isActive ? TOUR_STEPS[currentStepIndex] : null
 
   return (
-    <TourContext.Provider value={{ isActive, currentStepIndex, startTour, stopTour, nextStep, prevStep, currentStep }}>
+    <>
       {children}
 
       <AnimatePresence>
@@ -159,7 +188,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.97 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="border border-border shadow-2xl p-5 rounded-md pointer-events-auto flex flex-col space-y-4"
+              className="border border-border shadow-2xl p-5 rounded-none pointer-events-auto flex flex-col space-y-4"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border/40 pb-2">
@@ -169,7 +198,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                 </div>
                 <button
                   onClick={stopTour}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted/60"
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-none hover:bg-muted/60"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -178,7 +207,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
               {/* Title & Body */}
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <span className="h-6 px-2 flex items-center justify-center bg-primary/10 border border-primary/20 text-primary font-mono text-xs rounded-sm font-bold shrink-0">
+                  <span className="h-6 px-2 flex items-center justify-center bg-primary/10 border border-primary/20 text-primary font-mono text-xs rounded-none font-bold shrink-0">
                     {String(currentStepIndex + 1).padStart(2, '0')}
                   </span>
                   <h3 className="font-bold text-sm text-foreground tracking-tight leading-tight">
@@ -197,7 +226,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                   {TOUR_STEPS.map((_, idx) => (
                     <span
                       key={idx}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                      className={`h-1.5 rounded-none transition-all duration-300 ${
                         idx === currentStepIndex ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'
                       }`}
                     />
@@ -208,14 +237,14 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                   {currentStepIndex > 0 && (
                     <button
                       onClick={prevStep}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border rounded-sm transition-all duration-200"
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border rounded-none transition-all duration-200"
                     >
                       <ChevronLeft className="h-3.5 w-3.5" /> Back
                     </button>
                   )}
                   <button
                     onClick={nextStep}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:brightness-110 shadow-sm rounded-sm transition-all duration-200"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:brightness-110 shadow-sm rounded-none transition-all duration-200"
                   >
                     {currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'} <ChevronRight className="h-3.5 w-3.5" />
                   </button>
@@ -225,12 +254,6 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           </>
         )}
       </AnimatePresence>
-    </TourContext.Provider>
+    </>
   )
-}
-
-export function useTour() {
-  const context = useContext(TourContext)
-  if (!context) throw new Error('useTour must be used within TourProvider')
-  return context
 }

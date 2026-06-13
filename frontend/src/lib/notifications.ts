@@ -20,7 +20,7 @@ export async function fetchNotifications(): Promise<SystemNotification[]> {
 }
 
 export function dispatchNotificationsUpdate() {
-  window.dispatchEvent(new Event('netshield_notifications_update'))
+  window.dispatchEvent(new Event('omnidns_notifications_update'))
 }
 
 export async function markAllAsRead(): Promise<void> {

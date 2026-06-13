@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NetShield DNS — Makefile
+# OmniDNS DNS — Makefile
 #
 # Everything runs inside Docker. The only requirement on the host machine is:
 #   docker >= 24  +  docker compose >= v2

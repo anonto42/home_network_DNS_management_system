@@ -17,7 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useTheme, type Theme } from '../../hooks/useTheme';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/features/auth';
 import { useLayout } from '../../hooks/useLayout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -68,11 +68,11 @@ export const Header: React.FC = () => {
 
   useEffect(() => {
     loadNotifications()
-    window.addEventListener('netshield_notifications_update', loadNotifications)
+    window.addEventListener('omnidns_notifications_update', loadNotifications)
     const interval = setInterval(loadNotifications, 10000)
 
     return () => {
-      window.removeEventListener('netshield_notifications_update', loadNotifications)
+      window.removeEventListener('omnidns_notifications_update', loadNotifications)
       clearInterval(interval)
     }
   }, [loadNotifications])
@@ -212,7 +212,7 @@ export const Header: React.FC = () => {
             <DropdownMenuLabel className="font-normal bg-muted/20">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-bold text-foreground leading-none">{user?.name || 'Administrator'}</p>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{user?.email || 'admin@netshield.local'}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{user?.email || 'anontom90@gmail.com'}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-muted" />

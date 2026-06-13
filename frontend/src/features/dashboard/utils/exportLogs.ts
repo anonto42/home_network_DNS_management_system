@@ -55,7 +55,7 @@ export async function exportLogsCSV(range: TimeRange) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `netshield-logs-${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `omnidns-logs-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
   toast.success('Report exported', { description: `${filtered.length} entries downloaded.` })

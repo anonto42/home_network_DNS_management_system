@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Copy, ChevronLeft, ChevronRight, ChevronDown, Trash2, Search, FileX } from 'lucide-react'
+import { Copy, ChevronDown, Trash2, FileX } from 'lucide-react'
 import { copyToClipboard } from '@/lib/clipboard'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/table'
 import { useLogTable } from '../hooks/useLogTable'
 import LogDetailRow from './LogDetailRow'
-
 import { SearchInput } from '@/components/ui/search-input'
+import { TableEmptyState } from '@/components/ui/table-empty-state'
+import { TablePagination } from '@/components/ui/table-pagination'
 
 const PAGE_SIZE = 25
 
@@ -131,19 +132,12 @@ export default function LogTable({ compact }: Props) {
             </TableHeader>
             <TableBody>
               {loading ? renderSkeletonRows(compact ? 5 : 8) : displayLogs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={compact ? 3 : 6} className="h-32 text-center">
-                    <div className="flex flex-col items-center gap-3 py-4 text-muted-foreground">
-                      <FileX className="h-8 w-8 opacity-40" />
-                      <div>
-                        <p className="text-sm font-medium">No queries found</p>
-                        <p className="text-xs opacity-70 mt-1">
-                          {pendingSearch || filter !== 'all' ? 'Try adjusting your filters' : 'Make a DNS request to see it here'}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableEmptyState
+                  colSpan={compact ? 3 : 6}
+                  icon={FileX}
+                  primaryText="No queries found"
+                  secondaryText={pendingSearch || filter !== 'all' ? 'Try adjusting your filters' : 'Make a DNS request to see it here'}
+                />
               ) : displayLogs.map((l, idx) => {
                 const config = statusConfig[l.action || 'forwarded'] || statusConfig.forwarded
                 const isExpanded = l.id != null && expanded === l.id
@@ -216,33 +210,15 @@ export default function LogTable({ compact }: Props) {
         </div>
 
         {!compact && (
-          <div className="p-4 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              Showing{' '}
-              <span className="text-foreground">{logs.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, logs.length)}</span>
-              {' '}of{' '}
-              <span className="text-foreground">{logs.length}</span> queries
-              {pendingSearch && <span className="ml-2 text-primary">· filtered</span>}
-            </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const start = Math.max(1, Math.min(page - 2, totalPages - 4))
-                const p = start + i
-                if (p > totalPages) return null
-                return (
-                  <Button key={p} variant={page === p ? 'default' : 'ghost'} size="sm" className="h-7 px-3 text-[10px] font-bold" onClick={() => setPage(p)}>
-                    {p}
-                  </Button>
-                )
-              })}
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={logs.length}
+            pageSize={PAGE_SIZE}
+            itemLabel="queries"
+            filterLabel={pendingSearch ? '· filtered' : undefined}
+            onPageChange={setPage}
+          />
         )}
       </Card>
     </>
