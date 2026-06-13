@@ -5,6 +5,8 @@ builds:
   - id: dns-server
     binary: dns-server
     main: ./cmd/dns-server
+    flags:
+      - -tags=embed
     goos:
       - linux
       - windows
