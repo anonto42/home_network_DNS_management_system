@@ -1,0 +1,23 @@
+<svg
+  width="120"
+  height="120"
+  viewBox="0 0 100 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#00E5FF" />
+      <stop offset="100%" stopColor="#0088FF" />
+    </linearGradient>
+  </defs>
+  <!-- Sharp background card matching current design guidelines (0px border-radius / rx=0) -->
+  <rect x="10" y="10" width="80" height="80" rx="0" stroke="url(#logo-grad)" strokeWidth="4" fill="#071221" />
+  <path d="M50 25 L75 45 L75 70 L25 70 L25 45 Z" stroke="url(#logo-grad)" strokeWidth="3" fill="#14191f" />
+  <circle cx="50" cy="48" r="8" fill="url(#logo-grad)" />
+  <line x1="50" y1="25" x2="50" y2="40" stroke="url(#logo-grad)" strokeWidth="2.5" />
+  <line x1="25" y1="45" x2="42" y2="45" stroke="url(#logo-grad)" strokeWidth="2.5" />
+  <line x1="75" y1="45" x2="58" y2="45" stroke="url(#logo-grad)" strokeWidth="2.5" />
+  <line x1="33" y1="70" x2="44" y2="54" stroke="url(#logo-grad)" strokeWidth="2.5" />
+  <line x1="67" y1="70" x2="56" y2="54" stroke="url(#logo-grad)" strokeWidth="2.5" />
+</svg>
